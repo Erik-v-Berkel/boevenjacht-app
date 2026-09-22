@@ -1,4 +1,8 @@
-import { booleanPointInPolygon, distance, point, pointToLineDistance, polygonToLine } from '@turf/turf'
+import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
+import { distance } from '@turf/distance'
+import { point } from '@turf/helpers'
+import { pointToLineDistance } from '@turf/point-to-line-distance'
+import { polygonToLine } from '@turf/polygon-to-line'
 import type { Feature, LineString, MultiLineString, Polygon } from 'geojson'
 import type { Sight, SightGeometry } from './types'
 

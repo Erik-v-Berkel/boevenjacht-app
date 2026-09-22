@@ -2,22 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { normalizeBarName } from '../lib/barName'
 import { formatDuration, gameMinutesMs } from '../lib/clock'
 import { checkSight, insidePlayArea, type Position } from '../lib/geo'
-import { sendPhoto, type SubmitResult } from '../lib/photos'
-import { errorMessage } from '../lib/errors'
+import { enqueue, useQueueItem, useUploadQueue } from '../lib/uploadQueue'
 import { devModeAllowed, type GeoState } from '../lib/useGeolocation'
 import type { GameData } from '../lib/useGameData'
 import { CameraCapture } from '../components/CameraCapture'
 import { DevGps } from '../components/DevGps'
 import { Button, ErrorText, inputClass } from '../components/ui'
+import { PendingUploads, UploadStatus } from '../components/UploadStatus'
 
 type Kind = 'beer' | 'sight'
 type Step =
   | { name: 'choose' }
   | { name: 'camera'; kind: Kind }
   | { name: 'confirm'; kind: Kind; blob: Blob; url: string; pos: Position | null }
-  | { name: 'sending'; kind: Kind }
-  | { name: 'done'; result: SubmitResult }
-  | { name: 'error'; message: string; retry: () => void }
+  | { name: 'sent'; clientId: string }
 
 export default function ThiefCamera({ data, now, geo }: { data: GameData; now: number; geo: GeoState }) {
   const { game, photos, sights } = data
@@ -25,6 +23,8 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
   const dev = devModeAllowed(s.time_scale)
   const [step, setStep] = useState<Step>({ name: 'choose' })
   const [barName, setBarName] = useState('')
+  const queue = useUploadQueue(game.id)
+  const sentItem = useQueueItem(step.name === 'sent' ? step.clientId : null)
 
   const accepted = photos.filter((p) => p.status === 'accepted' && (p.type === 'beer' || p.type === 'sight'))
   const usedSights = useMemo(() => new Set(accepted.flatMap((p) => (p.sight_id ? [p.sight_id] : []))), [accepted])
@@ -41,18 +41,16 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
 
   const submit = (kind: Kind, blob: Blob, position: Position | null) => {
     const clientId = crypto.randomUUID()
-    const run = () => {
-      setStep({ name: 'sending', kind })
-      sendPhoto({ gameId: game.id, clientId, type: kind, blob, position, barName: kind === 'beer' ? barName : undefined })
-        .then((result) => {
-          navigator.vibrate?.(result.status === 'accepted' ? [100, 50, 100] : 300)
-          if (result.status === 'accepted') setBarName('')
-          setStep({ name: 'done', result })
-        })
-        .catch((err) => setStep({ name: 'error', message: errorMessage(err), retry: run }))
-    }
-    run()
+    void enqueue({ clientId, gameId: game.id, kind, blob, position, barName: kind === 'beer' ? barName.trim() : undefined })
+    setBarName('')
+    setStep({ name: 'sent', clientId })
   }
+
+  // Trillen zodra de server geantwoord heeft
+  const sentState = sentItem?.state === 'done' ? sentItem.result?.status : undefined
+  useEffect(() => {
+    if (sentState) navigator.vibrate?.(sentState === 'accepted' ? [100, 50, 100] : 300)
+  }, [sentState])
 
   if (step.name === 'camera') {
     return (
@@ -101,42 +99,7 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
     )
   }
 
-  if (step.name === 'sending') return <p className="mt-16 text-center text-2xl">📤 Wordt verstuurd…</p>
-
-  if (step.name === 'done') {
-    const r = step.result
-    return (
-      <div className="mt-10 flex flex-col gap-4 text-center">
-        {r.status === 'accepted' ? (
-          <>
-            <p className="text-6xl">✅</p>
-            <p className="text-2xl font-bold">Verstuurd ✓ −{r.bonus_min} min</p>
-            <p className="text-slate-400">{r.label}</p>
-            {r.bonus_min === 0 && <p className="text-slate-400">Maximale aftrek was al bereikt.</p>}
-          </>
-        ) : (
-          <>
-            <p className="text-6xl">❌</p>
-            <p className="text-2xl font-bold">Afgewezen</p>
-            <p className="text-slate-300">{r.reject_reason}</p>
-          </>
-        )}
-        <Button onClick={() => setStep({ name: 'choose' })}>Terug</Button>
-      </div>
-    )
-  }
-
-  if (step.name === 'error') {
-    return (
-      <div className="mt-10 flex flex-col gap-4">
-        <ErrorText>Versturen mislukt: {step.message}</ErrorText>
-        <Button onClick={step.retry}>Opnieuw versturen</Button>
-        <Button variant="secondary" onClick={() => setStep({ name: 'choose' })}>
-          Weggooien
-        </Button>
-      </div>
-    )
-  }
+  if (step.name === 'sent') return <UploadStatus item={sentItem} onBack={() => setStep({ name: 'choose' })} />
 
   // Keuzescherm met uitleg waarom iets (nog) niet kan
   const blocked = cooldownLeft > 0 ? `Wachttijd: nog ${formatDuration(cooldownLeft)}` : gpsProblem(geo) ?? (outside ? 'Je bent buiten het speelveld' : null)
@@ -153,6 +116,7 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-black">Bonusfoto</h1>
       {dev && <DevGps sights={sights} />}
+      <PendingUploads items={queue} />
       <GpsLine geo={geo} />
       {capReached && <Warning text="Maximale aftrek bereikt, foto's leveren geen tijd meer op (maar verraden wel je locatie!)" />}
       {blocked && <ErrorText>{blocked}</ErrorText>}

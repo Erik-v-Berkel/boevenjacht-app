@@ -3,6 +3,8 @@ import { supabase } from './supabase'
 import type { Position } from './geo'
 import type { Photo, Sight } from './types'
 
+export type PhotoKind = 'beer' | 'sight' | 'capture'
+
 export interface SubmitResult {
   photo_id: string
   status: 'accepted' | 'rejected'
@@ -11,57 +13,49 @@ export interface SubmitResult {
   label?: string
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-async function withRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
-  for (let i = 1; ; i++) {
-    try {
-      return await fn()
-    } catch (err) {
-      if (i >= attempts || (err as { final?: boolean }).final) throw err
-      await sleep(1000 * 2 ** i) // 2, 4, 8 s
-    }
-  }
-}
-
-/**
- * Uploadt de foto en registreert hem via submit_photo. De client_id bepaalt ook het bestandspad,
- * dus opnieuw proberen na slecht bereik levert nooit een dubbele foto of dubbele aftrek op.
- */
-export async function sendPhoto(opts: {
-  gameId: string
+export interface PhotoUpload {
   clientId: string
-  type: 'beer' | 'sight'
+  gameId: string
+  kind: PhotoKind
   blob: Blob
   position: Position | null
   barName?: string
-}): Promise<SubmitResult> {
-  const path = `${opts.gameId}/${opts.clientId}.jpg`
+}
 
-  await withRetry(async () => {
-    const { error } = await supabase.storage.from('photos').upload(path, opts.blob, { contentType: 'image/jpeg' })
-    // Bestaat al = een eerdere poging is wel aangekomen.
-    if (error && !/exists|duplicate/i.test(error.message)) throw error
-  })
+/** Fout die opnieuw proberen niet oplost (regel van de server, bv. "Alleen boeven…"). */
+export class FinalError extends Error {}
 
-  return withRetry(async () => {
-    const { data, error } = await supabase.rpc('submit_photo', {
-      p_game_id: opts.gameId,
-      p_client_id: opts.clientId,
-      p_type: opts.type,
-      p_storage_path: path,
-      p_lat: opts.position?.lat ?? null,
-      p_lng: opts.position?.lng ?? null,
-      p_accuracy_m: opts.position?.accuracy ?? null,
-      p_bar_name: opts.barName ?? null,
-    })
-    if (error) {
-      // Regelfout van de server (bv. "Alleen boeven…"): niet opnieuw proberen.
-      if (error.code === 'P0001') throw Object.assign(new Error(error.message), { final: true })
-      throw error
-    }
-    return data as SubmitResult
-  })
+/**
+ * Eén poging: uploaden en registreren. De client_id bepaalt ook het bestandspad, dus opnieuw
+ * proberen na slecht bereik levert nooit een dubbele foto of dubbele aftrek op.
+ */
+export async function sendOnce(u: PhotoUpload): Promise<SubmitResult> {
+  const path = `${u.gameId}/${u.clientId}.jpg`
+  const up = await supabase.storage.from('photos').upload(path, u.blob, { contentType: 'image/jpeg' })
+  // Bestaat al = een eerdere poging is wel aangekomen.
+  if (up.error && !/exists|duplicate/i.test(up.error.message)) throw up.error
+
+  const pos = {
+    p_lat: u.position?.lat ?? null,
+    p_lng: u.position?.lng ?? null,
+    p_accuracy_m: u.position?.accuracy ?? null,
+  }
+  const { data, error } =
+    u.kind === 'capture'
+      ? await supabase.rpc('submit_capture', { p_game_id: u.gameId, p_client_id: u.clientId, p_storage_path: path, ...pos })
+      : await supabase.rpc('submit_photo', {
+          p_game_id: u.gameId,
+          p_client_id: u.clientId,
+          p_type: u.kind,
+          p_storage_path: path,
+          ...pos,
+          p_bar_name: u.barName ?? null,
+        })
+  if (error) {
+    if (error.code === 'P0001') throw new FinalError(error.message)
+    throw error
+  }
+  return data as SubmitResult
 }
 
 // Getekende URL's voor de privé fotobucket, per pad onthouden.
@@ -77,7 +71,7 @@ export function usePhotoUrls(paths: string[]): Record<string, string> {
     if (missing.length === 0) return publish()
     supabase.storage
       .from('photos')
-      .createSignedUrls(missing, 6 * 3600)
+      .createSignedUrls(missing, 12 * 3600)
       .then(({ data }) => {
         data?.forEach((d) => d.path && d.signedUrl && urlCache.set(d.path, d.signedUrl))
         publish()

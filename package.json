@@ -13,17 +13,26 @@
     "db:start": "npx --yes supabase start",
     "db:stop": "npx --yes supabase stop",
     "db:reset": "npx --yes supabase db reset",
-    "icons": "pwa-assets-generator --preset minimal-2023 public/icon.svg"
+    "icons": "pwa-assets-generator --preset minimal-2023 public/icon.svg",
+    "test:e2e": "node --experimental-strip-types tests/e2e/fullGame.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",
-    "@turf/turf": "^7.4.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/distance": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "@turf/point-to-line-distance": "^7.4.0",
+    "@turf/polygon-to-line": "^7.4.0",
+    "canvas-confetti": "^1.9.4",
+    "idb-keyval": "^6.3.0",
+    "jszip": "^3.10.2",
     "leaflet": "^1.9.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^26.6.2",
@@ -31,6 +40,7 @@
     "@types/react-dom": "^19.3.0",
     "@vite-pwa/assets-generator": "^1.0.4",
     "@vitejs/plugin-react": "^6.1.1",
+    "playwright-core": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",

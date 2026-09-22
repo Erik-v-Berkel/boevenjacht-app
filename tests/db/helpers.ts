@@ -1,5 +1,7 @@
-import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { ENV_FILE } from '../setup/supabaseEnv'
+import { fetchWithClockRetry } from '../../src/lib/fetchRetry'
 
 // Integratietests tegen de lokale Supabase (npm run db:start). De spelregels leven in Postgres,
 // dus we testen de echte RPC's in plaats van een kopie van de logica in TypeScript.
@@ -11,12 +13,8 @@ interface LocalEnv {
 }
 
 function readLocalEnv(): LocalEnv {
-  let status: Record<string, string>
-  try {
-    status = JSON.parse(execSync('npx --yes supabase status -o json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  } catch {
-    throw new Error('Lokale Supabase draait niet. Start hem eerst met: npm run db:start')
-  }
+  const status = JSON.parse(readFileSync(ENV_FILE, 'utf8')) as Record<string, string>
+  if (!status.API_URL) throw new Error('Lokale Supabase draait niet. Start hem eerst met: npm run db:start')
   return {
     url: status.API_URL,
     anonKey: status.ANON_KEY ?? status.PUBLISHABLE_KEY,
@@ -27,7 +25,7 @@ function readLocalEnv(): LocalEnv {
 export const env = readLocalEnv()
 export const ADMIN_CODE = 'test-admin' // zie supabase/seed.sql
 
-const noSession = { auth: { persistSession: false, autoRefreshToken: false } }
+const noSession = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: fetchWithClockRetry } }
 
 /** Service-role client: omzeilt RLS, alleen om de testsituatie klaar te zetten. */
 export const admin = createClient(env.url, env.serviceKey, noSession)

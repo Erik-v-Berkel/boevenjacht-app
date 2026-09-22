@@ -32,7 +32,7 @@ export default function Home({ userId }: { userId: string }) {
     if (c) navigate(`/j/${c}`)
   }
 
-  const activeGame = myGame?.games && myGame.games.status !== 'ended' ? myGame : null
+  const activeGame = myGame?.games ? myGame : null
 
   return (
     <Screen>
@@ -44,7 +44,7 @@ export default function Home({ userId }: { userId: string }) {
 
       {activeGame && (
         <Button onClick={() => navigate(`/spel/${activeGame.game_id}`)}>
-          Terug naar je spel ({activeGame.games!.join_code})
+          {activeGame.games!.status === 'ended' ? 'Bekijk de uitslag' : 'Terug naar je spel'} ({activeGame.games!.join_code})
         </Button>
       )}
 
@@ -61,7 +61,7 @@ export default function Home({ userId }: { userId: string }) {
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
-        <Button type="submit" variant={activeGame ? 'secondary' : 'primary'} disabled={!code.trim()}>
+        <Button type="submit" variant={activeGame && activeGame.games!.status !== 'ended' ? 'secondary' : 'primary'} disabled={!code.trim()}>
           Doe mee
         </Button>
       </form>

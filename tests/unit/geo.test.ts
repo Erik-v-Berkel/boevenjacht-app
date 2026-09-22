@@ -58,3 +58,17 @@ describe('insidePlayArea', () => {
     expect(insidePlayArea(undefined, 0, 0)).toBe(true)
   })
 })
+
+describe('togetherWarning (Blijf bij elkaar)', () => {
+  it('waarschuwt pas boven 100 m en noemt de verste teamgenoot', async () => {
+    const { togetherWarning } = await import('../../src/lib/useTeamLocations')
+    const me = { lat: 51.2277, lng: 6.7716 }
+    expect(togetherWarning(me, [])).toBeNull()
+    expect(togetherWarning(me, [{ name: 'Anna', lat: 51.2282, lng: 6.7716 }])).toBeNull() // ±55 m
+    const w = togetherWarning(me, [
+      { name: 'Anna', lat: 51.2282, lng: 6.7716 },
+      { name: 'Bram', lat: 51.2297, lng: 6.7716 }, // ±222 m
+    ])
+    expect(w).toMatch(/^Blijf bij elkaar! Bram is 22\d m verderop\.$/)
+  })
+})

@@ -1,33 +1,23 @@
 # Boevenjacht Düsseldorf
 
-PWA voor verstoppertje in de binnenstad van Düsseldorf: 1 boeventeam, 3 politieteams. Specificatie: [PLAN.md](PLAN.md).
+PWA voor verstoppertje in de binnenstad van Düsseldorf: 1 boeventeam en 3 politieteams. Specificatie: [PLAN.md](PLAN.md).
 
-React + TypeScript + Vite + Tailwind · Supabase (Postgres, Realtime, Storage) · gehost op Vercel.
+React + TypeScript + Vite + Tailwind · Supabase (Postgres/PostGIS, Realtime, Storage) · Leaflet + Turf.js · gehost op Vercel.
 
-## Lokaal ontwikkelen
+Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spel). De app rekent alleen voor directe feedback.
 
-```bash
-npm install
-npm run db:start          # lokale Supabase in Docker (Docker Desktop moet draaien)
-cp .env.example .env.local  # vul URL + anon key in (lokaal: zie `npx supabase status`)
-npm run dev
-```
+## Productie klaarzetten (eenmalig)
 
-## Tests
+### 1. Supabase
 
-```bash
-npm run test:unit   # pure TypeScript
-npm run test:db     # spelregels in Postgres, tegen de lokale Supabase (npm run db:start)
-npm test            # allebei
-```
-
-Na een wijziging in `supabase/migrations/`: `npm run db:reset` (past alle migraties en `supabase/seed.sql` opnieuw toe; lokale beheerderscode is `test-admin`).
-
-## Productie-database (Supabase-dashboard)
-
-1. **SQL Editor**: plak elk bestand uit `supabase/migrations/` in volgorde (op bestandsnaam) en voer het uit. Elk bestand maar één keer.
+1. **SQL Editor**: plak elk bestand uit `supabase/migrations/` **in volgorde** en voer het uit (elk bestand één keer):
+   1. `20260922000001_games_teams_players.sql`
+   2. `20260923000001_clock_engine.sql`
+   3. `20260924000001_bonus_photos.sql`
+   4. `20260925000001_capture.sql`
+   5. `20260926000001_team_locations.sql`
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
-3. **Beheerderscode** instellen (nodig voor "Nieuw spel"); kies zelf een code:
+3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
    ```sql
    insert into private.app_secrets (key, value)
@@ -35,58 +25,56 @@ Na een wijziging in `supabase/migrations/`: `npm run db:reset` (past alle migrat
    on conflict (key) do update set value = excluded.value;
    ```
 
-## Deploy (Vercel)
+### 2. Vercel
 
-Vercel → Add New → Project → importeer de GitHub-repo. Framework: Vite (automatisch). Environment variables:
+Add New → Project → importeer de GitHub-repo (framework Vite wordt herkend). Environment variables:
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` (anon key of publishable key)
+- `VITE_SUPABASE_URL` — Supabase → Project Settings → API
+- `VITE_SUPABASE_ANON_KEY` — de anon key of de publishable key
 
 Elke push naar `main` deployt automatisch.
 
-## Noodingrepen (SQL Editor)
+## Spel spelen
 
-```sql
--- Spel opzoeken
-select id, join_code, status, ends_at from games order by created_at desc;
+1. **De dag ervoor**: open de app, onderaan **Nieuw spel aanmaken**, vul de beheerderscode in. Deel de link in de groepsapp.
+2. Iedereen opent de link, zet de app op het beginscherm, vult een naam in en kiest een team (max. 3).
+3. Als alle 4 teams iemand hebben: **Start spel** 3 seconden ingedrukt houden.
 
--- Speler uit een team halen (lobby)
-update players set team_id = null where game_id = '<game-id>' and name = '<naam>';
+## Testen
 
--- Per ongeluk gestart: terug naar de lobby
-update games set status = 'lobby', started_at = null, police_start_at = null, ends_at = null
-where id = '<game-id>';
-delete from events where game_id = '<game-id>';
+- **Testspel**: vink bij Nieuw spel "Testspel" aan. De tijd loopt dan 12× zo snel (hele spel ±16 min). Bonusminuten tellen gewoon als 10/15.
+- **Nep-GPS**: in een testspel `?dev=1` achter de URL zetten (bv. `https://…/spel/<id>?dev=1`). Op het camerascherm kies je een locatie uit een lijst, op de kaart tik je een punt aan.
+- **Automatische tests**:
 
--- Klok bijstellen, bv. 10 minuten erbij
-update games set ends_at = ends_at + interval '10 minutes' where id = '<game-id>';
+  ```bash
+  npm install
+  npm run db:start      # lokale Supabase in Docker (Docker Desktop moet draaien)
+  npm test              # unit-tests + alle spelregels tegen de lokale database
+  npm run dev           # in een tweede terminal, daarna:
+  npm run test:e2e      # heel spel in de browser met 5 nep-telefoons (Edge), screenshots in test-results/
+  ```
 
--- Spel dat al 'ended' staat weer laten lopen (na het bijstellen van ends_at)
-update games set status = 'running', winner = null where id = '<game-id>';
-delete from events where game_id = '<game-id>' and type = 'game_ended';
-```
+  Na een wijziging in `supabase/migrations/`: `npm run db:reset` (lokale beheerderscode is dan `test-admin`, zie `supabase/seed.sql`).
 
-```sql
--- Foto alsnog afwijzen (aftrek terugdraaien: bonus_total_min en ends_at opnieuw berekenen)
-update photos set status = 'rejected', reject_reason = 'Afgekeurd door Erik' where id = '<photo-id>';
-update games g set
-  bonus_total_min = (select coalesce(sum(bonus_min), 0) from photos where game_id = g.id and status = 'accepted'),
-  ends_at = started_at + ((settings->>'headstart_min')::numeric + (settings->>'search_min')::numeric
-            - least((select coalesce(sum(bonus_min), 0) from photos where game_id = g.id and status = 'accepted'),
-                    (settings->>'max_bonus_total_min')::int))
-            * interval '1 minute' / (settings->>'time_scale')::numeric
-where id = '<game-id>';
-delete from events where type = 'bonus' and payload->>'photo_id' = '<photo-id>';
+## Lokaal ontwikkelen
+
+```bash
+npm run db:start
+# .env.local met VITE_SUPABASE_URL=http://127.0.0.1:54321 en VITE_SUPABASE_ANON_KEY=<ANON_KEY uit `npx supabase status`>
+npm run dev
 ```
 
 ## Bezienswaardigheden en spelgebied
 
-De coördinaten staan in `supabase/migrations/20260924000001_bonus_photos.sql` (`private.sight_templates` en `private.default_play_area()`) en zijn **benaderingen**: controleer ze in Google Maps. Elk nieuw spel krijgt een kopie in de tabel `sights`; aanpassen voor één spel:
+De coördinaten staan in `supabase/migrations/20260924000001_bonus_photos.sql` (`private.sight_templates` en `private.default_play_area()`) en zijn **benaderingen**: controleer ze in Google Maps. Elk nieuw spel krijgt een kopie in de tabel `sights`. Aanpassen:
 
 ```sql
--- Straal of positie van één bezienswaardigheid in één spel
+-- Voor alle nieuwe spellen (sjabloon)
+update private.sight_templates set geometry = '{"type":"Point","coordinates":[6.7620,51.2180]}', radius_m = 90
+where name = 'Rheinturm';
+
+-- Alleen voor één bestaand spel
 update sights set radius_m = 90 where game_id = '<game-id>' and name = 'Rheinturm';
-update sights set geometry = '{"type":"Point","coordinates":[6.7620,51.2180]}' where game_id = '<game-id>' and name = 'Rheinturm';
 
 -- Proefspel in je eigen stad: eigen bezienswaardigheden en spelgebied (GeoJSON: [lng, lat])
 delete from sights where game_id = '<game-id>';
@@ -97,6 +85,59 @@ update games set settings = settings || jsonb_build_object('play_area',
 where id = '<game-id>';
 ```
 
-## Testen met nep-GPS
+Het spelgebied voor nieuwe spellen wijzig je door `private.default_play_area()` opnieuw aan te maken (`create or replace function …`).
 
-In een testspel (vinkje "Testspel" bij Nieuw spel) zet je `?dev=1` achter de URL, bv. `https://…/spel/<id>?dev=1`. Op het camerascherm verschijnt dan een keuzelijst om je locatie te "verplaatsen" naar een bezienswaardigheid, kroeg of buiten het speelveld.
+## Noodingrepen (Supabase → SQL Editor)
+
+Er is geen spelleider in de app. Als het echt misgaat:
+
+```sql
+-- Spel opzoeken
+select id, join_code, status, ends_at, bonus_total_min, winner from games order by created_at desc;
+
+-- Speler in een ander team zetten (ook na de start)
+update players set team_id = (select id from teams where game_id = '<game-id>' and name = 'Politie B')
+where game_id = '<game-id>' and name = '<naam>';
+
+-- Per ongeluk gestart: terug naar de lobby
+update games set status = 'lobby', started_at = null, police_start_at = null, ends_at = null, ended_at = null
+where id = '<game-id>';
+delete from events where game_id = '<game-id>';
+
+-- Klok bijstellen, bv. 10 minuten erbij
+update games set ends_at = ends_at + interval '10 minutes' where id = '<game-id>';
+
+-- Spel dat op 'ended' staat weer laten lopen (eerst ends_at in de toekomst zetten)
+update games set status = 'running', winner = null, winning_team_id = null, ended_at = null where id = '<game-id>';
+delete from events where game_id = '<game-id>' and type in ('game_ended', 'capture');
+-- en bij een onterechte vangst ook:
+update photos set status = 'rejected', reject_reason = 'Afgekeurd door Erik' where id = '<vangstfoto-id>';
+
+-- Bonusfoto alsnog afwijzen en de aftrek opnieuw berekenen
+update photos set status = 'rejected', reject_reason = 'Afgekeurd door Erik' where id = '<photo-id>';
+delete from events where type = 'bonus' and payload->>'photo_id' = '<photo-id>';
+update games g set
+  bonus_total_min = s.total,
+  ends_at = g.started_at + ((g.settings->>'headstart_min')::numeric + (g.settings->>'search_min')::numeric
+            - least(s.total, (g.settings->>'max_bonus_total_min')::int))
+            * interval '1 minute' / (g.settings->>'time_scale')::numeric
+from (select coalesce(sum(bonus_min), 0)::int as total from photos
+      where game_id = '<game-id>' and status = 'accepted') s
+where g.id = '<game-id>';
+```
+
+## Na het weekend: opruimen
+
+1. Download de foto's via het eindscherm: **Download alle foto's (zip)**.
+2. Foto's verwijderen: Supabase → **Storage** → bucket `photos` → map `<game-id>` → selecteren → Delete. (Rechtstreeks uit `storage.objects` verwijderen via SQL blokkeert Supabase.)
+3. Spel verwijderen (teams, spelers, foto-registraties en events gaan mee):
+
+   ```sql
+   delete from games where id = '<game-id>';
+   ```
+
+4. Eventueel de anonieme gebruikers: Authentication → Users → filter "Anonymous" → verwijderen.
+
+## Privacy
+
+Foto's staan in een privé Storage-bucket; alleen deelnemers van het spel kunnen ze zien (getekende URL's). De politie ziet nooit live locaties van de boeven: die staan in een aparte tabel die alleen boeven onderling kunnen lezen.

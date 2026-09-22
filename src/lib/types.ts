@@ -56,6 +56,7 @@ export interface Game {
   started_at: string | null
   police_start_at: string | null
   ends_at: string | null
+  ended_at: string | null
   bonus_total_min: number
   winner: TeamRole | null
   winning_team_id: string | null

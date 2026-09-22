@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDuration, gameMinutesMs, needsTick, phaseAt } from '../lib/clock'
-import { useServerClock, useServerNow } from '../lib/useServerClock'
-import type { GameData } from '../lib/useGameData'
-import type { GameEvent, Photo, Player, Team } from '../lib/types'
-import { usePhotoUrls } from '../lib/photos'
+import { eventText } from '../lib/events'
 import { insidePlayArea } from '../lib/geo'
+import { usePhotoUrls } from '../lib/photos'
+import { useServerClock, useServerNow } from '../lib/useServerClock'
 import { devModeAllowed, setFakePosition, useGeolocation } from '../lib/useGeolocation'
-import MapTab from './MapTab'
+import { useWakeLock } from '../lib/useWakeLock'
+import { useTeamLocations } from '../lib/useTeamLocations'
+import type { GameData } from '../lib/useGameData'
+import type { Photo, Player, Team } from '../lib/types'
 import { Rules } from '../components/Rules'
+import { FeedItem, Lightbox } from '../components/FeedItem'
 import EndScreen from './EndScreen'
+import MapTab from './MapTab'
+import PoliceCamera from './PoliceCamera'
 import ThiefCamera from './ThiefCamera'
 
 type Tab = 'klok' | 'kaart' | 'camera' | 'regels'
@@ -31,6 +36,9 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
   const dev = devModeAllowed(game.settings.time_scale)
   const geo = useGeolocation(dev)
   const outside = geo.kind === 'ok' && !insidePlayArea(game.settings.play_area, geo.pos.lat, geo.pos.lng)
+  const team = useTeamLocations(data, me, myTeam, geo, phase !== 'ended')
+  const toasts = useEventToasts(data)
+  useWakeLock(phase !== 'ended')
 
   // Zonder spelleider: elke telefoon vraagt de server om bij te werken zodra de klok een grens passeert.
   const lastTick = useRef(0)
@@ -42,14 +50,13 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
     }
   }, [game, now])
 
-  if (phase === 'ended') return <EndScreen data={data} now={now} />
+  if (phase === 'ended') return <EndScreen data={data} me={me} now={now} />
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-24">
-        {outside && tab !== 'kaart' && (
-          <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200 ring-1 ring-amber-800">⚠️ Je bent buiten het speelveld</p>
-        )}
+        {tab !== 'kaart' && outside && <Banner color="amber">⚠️ Je bent buiten het speelveld</Banner>}
+        {tab !== 'kaart' && team.warning && <Banner color="red">{team.warning}</Banner>}
         {tab === 'klok' && (
           <>
             <Countdown data={data} team={myTeam} now={now} />
@@ -63,6 +70,8 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
             now={now}
             geo={geo}
             outside={outside}
+            teammates={team.teammates}
+            banner={team.warning}
             onTap={dev ? (lat, lng) => setFakePosition({ lat, lng, accuracy: 10 }) : undefined}
           />
         )}
@@ -70,14 +79,22 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
           (myTeam?.role === 'thieves' ? (
             <ThiefCamera data={data} now={now} geo={geo} />
           ) : myTeam?.role === 'police' ? (
-            <PoliceCamera data={data} now={now} />
+            <PoliceCamera data={data} now={now} geo={geo} />
           ) : (
-            <Placeholder text="Je zit niet in een team, dus je kunt geen foto's maken." />
+            <p className="mt-10 text-center text-slate-400">Je zit niet in een team, dus je kunt geen foto's maken.</p>
           ))}
         {tab === 'regels' && <Rules settings={game.settings} />}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 border-t border-slate-800 bg-slate-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      <div className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[2000] mx-auto flex max-w-md flex-col gap-2 px-3">
+        {toasts.map((t) => (
+          <div key={t.id} className="rounded-xl bg-yellow-400 px-4 py-3 font-semibold text-slate-900 shadow-lg">
+            {t.icon} {t.text}
+          </div>
+        ))}
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-[1500] border-t border-slate-800 bg-slate-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-md">
           {TABS.map((t) => (
             <button
@@ -93,6 +110,35 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
       </nav>
     </div>
   )
+}
+
+function Banner({ color, children }: { color: 'amber' | 'red'; children: React.ReactNode }) {
+  const cls = color === 'amber' ? 'bg-amber-950 text-amber-200 ring-amber-800' : 'bg-red-950 text-red-200 ring-red-800'
+  return <p className={`rounded-lg px-3 py-2 font-semibold ring-1 ${cls}`}>{children}</p>
+}
+
+/** Melding + trillen bij nieuwe gebeurtenissen (foto's, politie vrij, vangst). */
+function useEventToasts(data: GameData) {
+  const [toasts, setToasts] = useState<{ id: number; icon: string; text: string }[]>([])
+  const lastSeen = useRef<number | null>(null)
+
+  useEffect(() => {
+    const newest = data.events[0]?.id ?? 0
+    if (lastSeen.current === null) {
+      lastSeen.current = newest // bij openen geen oude meldingen
+      return
+    }
+    const fresh = data.events.filter((e) => e.id > lastSeen.current!).reverse()
+    lastSeen.current = Math.max(lastSeen.current, newest)
+    if (fresh.length === 0) return
+    navigator.vibrate?.([200, 100, 200])
+    const added = fresh.map((e) => ({ id: e.id, ...eventText(e, data.players, data.teams) }))
+    setToasts((t) => [...t, ...added])
+    const ids = new Set(added.map((a) => a.id))
+    setTimeout(() => setToasts((t) => t.filter((x) => !ids.has(x.id))), 6000)
+  }, [data.events, data.players, data.teams])
+
+  return toasts
 }
 
 function Countdown({ data, team, now }: { data: GameData; team: Team | null; now: number }) {
@@ -150,34 +196,6 @@ function BonusBar({ data }: { data: GameData }) {
   )
 }
 
-const clockTime = (iso: string) => new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-
-export function eventText(e: GameEvent, players: Player[], teams: Team[]): { icon: string; text: string } {
-  switch (e.type) {
-    case 'game_started': {
-      const who = players.find((p) => p.id === e.payload.player_id)?.name
-      return { icon: '🏁', text: `Spel gestart${who ? ` door ${who}` : ''}. De boeven zijn vertrokken!` }
-    }
-    case 'police_released':
-      return { icon: '🚓', text: 'De politie mag vertrekken!' }
-    case 'bonus': {
-      const who = players.find((p) => p.id === e.payload.player_id)?.name
-      const icon = e.payload.photo_type === 'beer' ? '🍺' : '🏛️'
-      const min = Number(e.payload.bonus_min)
-      return { icon, text: `Boeven${who ? ` (${who})` : ''}: ${min > 0 ? `−${min} min` : 'foto'} bij ${e.payload.label}` }
-    }
-    case 'bonus_cap_reached':
-      return { icon: '🧢', text: `Maximale aftrek bereikt (${e.payload.max} min). Foto's leveren de boeven geen tijd meer op.` }
-    case 'game_ended': {
-      if (e.payload.winner === 'thieves') return { icon: '🦹', text: 'De tijd is op. De boeven zijn ontsnapt!' }
-      const team = teams.find((t) => t.id === e.payload.team_id)?.name ?? 'de politie'
-      return { icon: '🚨', text: `Boeven gevangen door ${team}!` }
-    }
-    default:
-      return { icon: '•', text: e.type }
-  }
-}
-
 function Feed({ data }: { data: GameData }) {
   const { events, players, teams, photos } = data
   const photoById = new Map(photos.map((p) => [p.id, p]))
@@ -187,42 +205,18 @@ function Feed({ data }: { data: GameData }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold text-slate-400 uppercase">Feed</h2>
-      {events.map((e) => {
-        const { icon, text } = eventText(e, players, teams)
-        const photo = typeof e.payload.photo_id === 'string' ? photoById.get(e.payload.photo_id) : undefined
-        const url = photo && urls[photo.storage_path]
-        return (
-          <div key={e.id} className="flex gap-3 rounded-xl bg-slate-800/60 p-3 ring-1 ring-slate-800">
-            <span className="text-2xl">{icon}</span>
-            <div className="flex-1">
-              <p>{text}</p>
-              <p className="text-xs text-slate-500">{clockTime(e.created_at)}</p>
-            </div>
-            {photo && (
-              <button onClick={() => setOpen(photo)} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-700">
-                {url && <img src={url} alt="" className="h-full w-full object-cover" />}
-              </button>
-            )}
-          </div>
-        )
-      })}
-      {open && urls[open.storage_path] && (
-        <button className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4" onClick={() => setOpen(null)}>
-          <img src={urls[open.storage_path]} alt="" className="max-h-full max-w-full rounded-xl" />
-        </button>
-      )}
+      {events.map((e) => (
+        <FeedItem
+          key={e.id}
+          e={e}
+          players={players}
+          teams={teams}
+          photo={typeof e.payload.photo_id === 'string' ? photoById.get(e.payload.photo_id) : undefined}
+          urls={urls}
+          onOpen={setOpen}
+        />
+      ))}
+      {open && urls[open.storage_path] && <Lightbox url={urls[open.storage_path]} onClose={() => setOpen(null)} />}
     </section>
   )
-}
-
-function PoliceCamera({ data, now }: { data: GameData; now: number }) {
-  const policeStart = Date.parse(data.game.police_start_at!)
-  if (now < policeStart) {
-    return <Placeholder text={`De camera is geblokkeerd tot jullie mogen vertrekken (nog ${formatDuration(policeStart - now)}).`} />
-  }
-  return <Placeholder text="Vangstfoto maken komt in een volgende versie." />
-}
-
-function Placeholder({ text }: { text: string }) {
-  return <p className="mt-10 text-center text-slate-400">{text}</p>
 }
