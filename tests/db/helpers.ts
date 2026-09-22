@@ -70,3 +70,31 @@ export async function joinedPhone(joinCode: string, name: string) {
   })
   return { phone, ...res }
 }
+
+/** Spel met in elk team één speler. Geeft de telefoons per team terug (0 = Boeven, 1-3 = Politie A-C). */
+export async function fullLobby(settings: Record<string, unknown> = {}) {
+  const { game_id, join_code } = await createGame(settings)
+  const teams = await teamsOf(game_id)
+  const players = await Promise.all(
+    teams.map(async (team) => {
+      const p = await joinedPhone(join_code, team.name)
+      await rpc(p.phone, 'choose_team', { p_game_id: game_id, p_team_id: team.id })
+      return { ...p, team }
+    }),
+  )
+  return { game_id, join_code, teams, players }
+}
+
+export async function gameRow(gameId: string) {
+  const { data, error } = await admin.from('games').select('*').eq('id', gameId).single()
+  if (error) throw error
+  return data
+}
+
+export async function eventTypes(gameId: string) {
+  const { data, error } = await admin.from('events').select('type').eq('game_id', gameId).order('id')
+  if (error) throw error
+  return data.map((e) => e.type as string)
+}
+
+export const minutes = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 60_000

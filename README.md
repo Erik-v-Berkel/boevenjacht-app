@@ -52,6 +52,18 @@ select id, join_code, status, ends_at from games order by created_at desc;
 
 -- Speler uit een team halen (lobby)
 update players set team_id = null where game_id = '<game-id>' and name = '<naam>';
+
+-- Per ongeluk gestart: terug naar de lobby
+update games set status = 'lobby', started_at = null, police_start_at = null, ends_at = null
+where id = '<game-id>';
+delete from events where game_id = '<game-id>';
+
+-- Klok bijstellen, bv. 10 minuten erbij
+update games set ends_at = ends_at + interval '10 minutes' where id = '<game-id>';
+
+-- Spel dat al 'ended' staat weer laten lopen (na het bijstellen van ends_at)
+update games set status = 'running', winner = null where id = '<game-id>';
+delete from events where game_id = '<game-id>' and type = 'game_ended';
 ```
 
 Meer noodingrepen (klok, foto's afwijzen, opruimen) volgen in latere fases.

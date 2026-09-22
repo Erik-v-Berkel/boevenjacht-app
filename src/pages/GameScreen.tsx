@@ -2,6 +2,7 @@ import { useGameData } from '../lib/useGameData'
 import { navigate } from '../lib/router'
 import { Button, ErrorText, Screen } from '../components/ui'
 import Lobby from './Lobby'
+import MainScreen from './MainScreen'
 
 export default function GameScreen({ gameId, userId }: { gameId: string; userId: string }) {
   const { state, reload } = useGameData(gameId)
@@ -35,10 +36,5 @@ export default function GameScreen({ gameId, userId }: { gameId: string; userId:
   if (!me) return null
 
   if (data.game.status === 'lobby') return <Lobby data={data} me={me} />
-
-  return (
-    <Screen>
-      <h1 className="pt-6 text-2xl font-black">Het spel is begonnen</h1>
-    </Screen>
-  )
+  return <MainScreen data={data} me={me} />
 }

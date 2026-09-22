@@ -45,3 +45,13 @@ export interface Player {
   joined_at: string
   last_seen_at: string
 }
+
+export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended'
+
+export interface GameEvent {
+  id: number
+  game_id: string
+  type: EventType
+  payload: Record<string, unknown>
+  created_at: string
+}

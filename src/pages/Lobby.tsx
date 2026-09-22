@@ -5,6 +5,7 @@ import { joinLink } from '../lib/joinCode'
 import type { GameData } from '../lib/useGameData'
 import type { Player } from '../lib/types'
 import { ErrorText, Screen } from '../components/ui'
+import { HoldButton } from '../components/HoldButton'
 
 export default function Lobby({ data, me }: { data: GameData; me: Player }) {
   const { game, teams, players } = data
@@ -26,7 +27,16 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
     else await navigator.clipboard.writeText(url)
   }
 
+  const start = async () => {
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.rpc('start_game', { p_game_id: game.id })
+    setBusy(false)
+    if (error) setError(errorMessage(error))
+  }
+
   const withoutTeam = players.filter((p) => !p.team_id)
+  const emptyTeams = teams.filter((t) => !players.some((p) => p.team_id === t.id))
 
   return (
     <Screen>
@@ -100,6 +110,19 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
       {withoutTeam.length > 0 && (
         <p className="text-sm text-slate-400">Nog zonder team: {withoutTeam.map((p) => p.name).join(', ')}</p>
       )}
+
+      <section className="mt-2 flex flex-col gap-2">
+        <HoldButton disabled={busy || !me.team_id || emptyTeams.length > 0} onHold={start}>
+          Start spel (3 sec. vasthouden)
+        </HoldButton>
+        <p className="text-center text-sm text-slate-400">
+          {!me.team_id
+            ? 'Kies eerst een team.'
+            : emptyTeams.length > 0
+              ? `Nog niemand in: ${emptyTeams.map((t) => t.name).join(', ')}`
+              : 'Iedereen klaar? De boeven vertrekken direct na de start.'}
+        </p>
+      </section>
     </Screen>
   )
 }

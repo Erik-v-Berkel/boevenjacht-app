@@ -16,12 +16,16 @@ export default function NewGame() {
   const [error, setError] = useState('')
   const [created, setCreated] = useState<Created | null>(null)
   const [copied, setCopied] = useState(false)
+  const [testMode, setTestMode] = useState(false)
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const { data, error } = await supabase.rpc('create_game', { p_admin_code: adminCode })
+    const { data, error } = await supabase.rpc('create_game', {
+      p_admin_code: adminCode,
+      p_settings: testMode ? { time_scale: 12 } : {},
+    })
     setBusy(false)
     if (error) setError(errorMessage(error))
     else setCreated(data as Created)
@@ -66,6 +70,10 @@ export default function NewGame() {
           value={adminCode}
           onChange={(e) => setAdminCode(e.target.value)}
         />
+        <label className="flex items-center gap-3 text-slate-300">
+          <input type="checkbox" className="h-5 w-5" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
+          Testspel: tijd loopt 12× zo snel (hele spel in ±16 min)
+        </label>
         <ErrorText>{error}</ErrorText>
         <Button type="submit" disabled={busy || !adminCode}>
           {busy ? 'Bezig…' : 'Nieuw spel'}
