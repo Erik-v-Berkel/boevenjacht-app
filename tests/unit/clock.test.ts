@@ -57,3 +57,13 @@ describe('gameMinutesMs', () => {
     expect(gameMinutesMs(1, 12)).toBe(5_000)
   })
 })
+
+describe('timeAgo', () => {
+  it('toont net, minuten en uren', async () => {
+    const { timeAgo } = await import('../../src/lib/clock')
+    const t = Date.parse('2026-10-03T20:00:00Z')
+    expect(timeAgo('2026-10-03T19:59:30Z', t)).toBe('net')
+    expect(timeAgo('2026-10-03T19:37:00Z', t)).toBe('23 min geleden')
+    expect(timeAgo('2026-10-03T18:55:00Z', t)).toBe('1 u 5 min geleden')
+  })
+})

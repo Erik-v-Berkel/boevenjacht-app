@@ -5,6 +5,9 @@ import { useServerClock, useServerNow } from '../lib/useServerClock'
 import type { GameData } from '../lib/useGameData'
 import type { GameEvent, Photo, Player, Team } from '../lib/types'
 import { usePhotoUrls } from '../lib/photos'
+import { insidePlayArea } from '../lib/geo'
+import { devModeAllowed, setFakePosition, useGeolocation } from '../lib/useGeolocation'
+import MapTab from './MapTab'
 import { Rules } from '../components/Rules'
 import EndScreen from './EndScreen'
 import ThiefCamera from './ThiefCamera'
@@ -25,6 +28,9 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
   const phase = phaseAt(game, now)
   const [tab, setTab] = useState<Tab>('klok')
   const myTeam = data.teams.find((t) => t.id === me.team_id) ?? null
+  const dev = devModeAllowed(game.settings.time_scale)
+  const geo = useGeolocation(dev)
+  const outside = geo.kind === 'ok' && !insidePlayArea(game.settings.play_area, geo.pos.lat, geo.pos.lng)
 
   // Zonder spelleider: elke telefoon vraagt de server om bij te werken zodra de klok een grens passeert.
   const lastTick = useRef(0)
@@ -41,6 +47,9 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <main className="flex flex-1 flex-col gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-24">
+        {outside && tab !== 'kaart' && (
+          <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200 ring-1 ring-amber-800">⚠️ Je bent buiten het speelveld</p>
+        )}
         {tab === 'klok' && (
           <>
             <Countdown data={data} team={myTeam} now={now} />
@@ -48,10 +57,18 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
             <Feed data={data} />
           </>
         )}
-        {tab === 'kaart' && <Placeholder text="De kaart komt in een volgende versie." />}
+        {tab === 'kaart' && (
+          <MapTab
+            data={data}
+            now={now}
+            geo={geo}
+            outside={outside}
+            onTap={dev ? (lat, lng) => setFakePosition({ lat, lng, accuracy: 10 }) : undefined}
+          />
+        )}
         {tab === 'camera' &&
           (myTeam?.role === 'thieves' ? (
-            <ThiefCamera data={data} now={now} />
+            <ThiefCamera data={data} now={now} geo={geo} />
           ) : myTeam?.role === 'police' ? (
             <PoliceCamera data={data} now={now} />
           ) : (

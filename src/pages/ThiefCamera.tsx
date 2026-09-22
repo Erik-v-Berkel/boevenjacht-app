@@ -4,7 +4,7 @@ import { formatDuration, gameMinutesMs } from '../lib/clock'
 import { checkSight, insidePlayArea, type Position } from '../lib/geo'
 import { sendPhoto, type SubmitResult } from '../lib/photos'
 import { errorMessage } from '../lib/errors'
-import { devModeAllowed, useGeolocation, type GeoState } from '../lib/useGeolocation'
+import { devModeAllowed, type GeoState } from '../lib/useGeolocation'
 import type { GameData } from '../lib/useGameData'
 import { CameraCapture } from '../components/CameraCapture'
 import { DevGps } from '../components/DevGps'
@@ -19,11 +19,10 @@ type Step =
   | { name: 'done'; result: SubmitResult }
   | { name: 'error'; message: string; retry: () => void }
 
-export default function ThiefCamera({ data, now }: { data: GameData; now: number }) {
+export default function ThiefCamera({ data, now, geo }: { data: GameData; now: number; geo: GeoState }) {
   const { game, photos, sights } = data
   const s = game.settings
   const dev = devModeAllowed(s.time_scale)
-  const geo = useGeolocation(dev)
   const [step, setStep] = useState<Step>({ name: 'choose' })
   const [barName, setBarName] = useState('')
 

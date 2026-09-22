@@ -43,3 +43,11 @@ export function computeOffset(samples: ClockSample[]): number {
 export function gameMinutesMs(minutes: number, timeScale: number): number {
   return (minutes * 60_000) / timeScale
 }
+
+/** "net", "23 min geleden", "1 u 5 min geleden" */
+export function timeAgo(iso: string, now: number): string {
+  const min = Math.floor((now - Date.parse(iso)) / 60_000)
+  if (min < 1) return 'net'
+  if (min < 60) return `${min} min geleden`
+  return `${Math.floor(min / 60)} u ${min % 60} min geleden`
+}

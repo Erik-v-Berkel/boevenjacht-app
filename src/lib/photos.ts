@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import type { Position } from './geo'
+import type { Photo, Sight } from './types'
 
 export interface SubmitResult {
   photo_id: string
@@ -84,4 +85,16 @@ export function usePhotoUrls(paths: string[]): Record<string, string> {
   }, [key])
 
   return urls
+}
+
+/** Omschrijving van een foto: naam van de bezienswaardigheid of de kroeg. */
+export function photoLabel(photo: Photo, sights: Sight[]): string {
+  if (photo.type === 'sight') return sights.find((s) => s.id === photo.sight_id)?.name ?? 'Bezienswaardigheid'
+  if (photo.type === 'beer') return photo.bar_name ?? 'Kroeg'
+  return 'Vangstfoto'
+}
+
+/** Geaccepteerde bonusfoto's van de boeven, oudste eerst. */
+export function thiefPhotos(photos: Photo[]): Photo[] {
+  return photos.filter((p) => p.status === 'accepted' && (p.type === 'beer' || p.type === 'sight'))
 }
