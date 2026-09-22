@@ -1,0 +1,8 @@
+# Project rules for AI coding agents
+
+Auto-scaffolded by tokenade on first MCP session. Safe to edit; the tokenade block below is identified by the HTML marker and will be updated in-place on future tokenade upgrades.
+
+<!-- tokenade-scaffold -->
+## Project rules
+Read `AGENTS.md` in this directory before you start — it carries this project's rules for working with the `tokenade` CLI. They are written once, there, so this agent does not load the same rules twice.
+<!-- /tokenade-scaffold -->
