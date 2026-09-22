@@ -1,3 +1,5 @@
+import type { LineString, Point, Polygon } from 'geojson'
+
 export type GameStatus = 'lobby' | 'headstart' | 'running' | 'ended'
 export type TeamRole = 'thieves' | 'police'
 
@@ -11,6 +13,40 @@ export interface GameSettings {
   bonus_during_headstart: boolean
   max_players_per_team: number
   time_scale: number
+  play_area?: Polygon
+}
+
+export type SightGeometry = Point | LineString | Polygon
+
+export interface Sight {
+  id: number
+  game_id: string
+  name: string
+  geometry: SightGeometry
+  radius_m: number
+  sort: number
+}
+
+export type PhotoType = 'beer' | 'sight' | 'capture'
+
+export interface Photo {
+  id: string
+  client_id: string
+  game_id: string
+  player_id: string
+  team_id: string
+  type: PhotoType
+  storage_path: string
+  lat: number | null
+  lng: number | null
+  accuracy_m: number | null
+  sight_id: number | null
+  bar_name: string | null
+  bar_name_norm: string | null
+  bonus_min: number
+  status: 'accepted' | 'rejected'
+  reject_reason: string | null
+  created_at: string
 }
 
 export interface Game {

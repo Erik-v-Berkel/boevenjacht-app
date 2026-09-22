@@ -66,4 +66,37 @@ update games set status = 'running', winner = null where id = '<game-id>';
 delete from events where game_id = '<game-id>' and type = 'game_ended';
 ```
 
-Meer noodingrepen (klok, foto's afwijzen, opruimen) volgen in latere fases.
+```sql
+-- Foto alsnog afwijzen (aftrek terugdraaien: bonus_total_min en ends_at opnieuw berekenen)
+update photos set status = 'rejected', reject_reason = 'Afgekeurd door Erik' where id = '<photo-id>';
+update games g set
+  bonus_total_min = (select coalesce(sum(bonus_min), 0) from photos where game_id = g.id and status = 'accepted'),
+  ends_at = started_at + ((settings->>'headstart_min')::numeric + (settings->>'search_min')::numeric
+            - least((select coalesce(sum(bonus_min), 0) from photos where game_id = g.id and status = 'accepted'),
+                    (settings->>'max_bonus_total_min')::int))
+            * interval '1 minute' / (settings->>'time_scale')::numeric
+where id = '<game-id>';
+delete from events where type = 'bonus' and payload->>'photo_id' = '<photo-id>';
+```
+
+## Bezienswaardigheden en spelgebied
+
+De coördinaten staan in `supabase/migrations/20260924000001_bonus_photos.sql` (`private.sight_templates` en `private.default_play_area()`) en zijn **benaderingen**: controleer ze in Google Maps. Elk nieuw spel krijgt een kopie in de tabel `sights`; aanpassen voor één spel:
+
+```sql
+-- Straal of positie van één bezienswaardigheid in één spel
+update sights set radius_m = 90 where game_id = '<game-id>' and name = 'Rheinturm';
+update sights set geometry = '{"type":"Point","coordinates":[6.7620,51.2180]}' where game_id = '<game-id>' and name = 'Rheinturm';
+
+-- Proefspel in je eigen stad: eigen bezienswaardigheden en spelgebied (GeoJSON: [lng, lat])
+delete from sights where game_id = '<game-id>';
+insert into sights (game_id, name, geometry, radius_m, sort) values
+  ('<game-id>', 'Kerk', '{"type":"Point","coordinates":[5.1214,52.0907]}', 60, 1);
+update games set settings = settings || jsonb_build_object('play_area',
+  '{"type":"Polygon","coordinates":[[[5.10,52.08],[5.14,52.08],[5.14,52.10],[5.10,52.10],[5.10,52.08]]]}'::jsonb)
+where id = '<game-id>';
+```
+
+## Testen met nep-GPS
+
+In een testspel (vinkje "Testspel" bij Nieuw spel) zet je `?dev=1` achter de URL, bv. `https://…/spel/<id>?dev=1`. Op het camerascherm verschijnt dan een keuzelijst om je locatie te "verplaatsen" naar een bezienswaardigheid, kroeg of buiten het speelveld.

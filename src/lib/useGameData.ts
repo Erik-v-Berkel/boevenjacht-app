@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import type { Game, GameEvent, Player, Team } from './types'
+import type { Game, GameEvent, Photo, Player, Sight, Team } from './types'
 
 export interface GameData {
   game: Game
   teams: Team[]
   players: Player[]
   events: GameEvent[] // nieuwste eerst
+  photos: Photo[] // geaccepteerde + je eigen afgewezen (RLS), oudste eerst
+  sights: Sight[]
 }
 
 type State =
@@ -15,18 +17,20 @@ type State =
   | { kind: 'error'; message: string }
   | { kind: 'ready'; data: GameData }
 
-/** Laadt spel, teams en spelers en houdt ze realtime bij. Bij elke wijziging wordt alles opnieuw opgehaald (klein spel, simpel en robuust). */
+/** Laadt het hele spel en houdt het realtime bij. Bij elke wijziging wordt alles opnieuw opgehaald (klein spel, simpel en robuust). */
 export function useGameData(gameId: string) {
   const [state, setState] = useState<State>({ kind: 'loading' })
 
   const load = useCallback(async () => {
-    const [g, t, p, e] = await Promise.all([
+    const [g, t, p, e, ph, s] = await Promise.all([
       supabase.from('games').select('*').eq('id', gameId).maybeSingle(),
       supabase.from('teams').select('*').eq('game_id', gameId).order('sort'),
       supabase.from('players').select('*').eq('game_id', gameId).order('joined_at'),
       supabase.from('events').select('*').eq('game_id', gameId).order('id', { ascending: false }),
+      supabase.from('photos').select('*').eq('game_id', gameId).order('created_at'),
+      supabase.from('sights').select('*').eq('game_id', gameId).order('sort'),
     ])
-    const error = g.error ?? t.error ?? p.error ?? e.error
+    const error = g.error ?? t.error ?? p.error ?? e.error ?? ph.error ?? s.error
     if (error) {
       setState((s) => (s.kind === 'ready' ? s : { kind: 'error', message: error.message }))
       return
@@ -37,19 +41,28 @@ export function useGameData(gameId: string) {
     }
     setState({
       kind: 'ready',
-      data: { game: g.data, teams: t.data ?? [], players: p.data ?? [], events: e.data ?? [] },
+      data: {
+        game: g.data,
+        teams: t.data ?? [],
+        players: p.data ?? [],
+        events: e.data ?? [],
+        photos: ph.data ?? [],
+        sights: s.data ?? [],
+      },
     })
   }, [gameId])
 
   useEffect(() => {
     void load()
     const reload = () => void load()
+    const byGame = `game_id=eq.${gameId}`
     const channel = supabase
       .channel(`game:${gameId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: `game_id=eq.${gameId}` }, reload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, reload)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `game_id=eq.${gameId}` }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: byGame }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: byGame }, reload)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: byGame }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'photos', filter: byGame }, reload)
       .subscribe((status) => {
         // Na een herverbinding kunnen we wijzigingen gemist hebben.
         if (status === 'SUBSCRIBED') reload()

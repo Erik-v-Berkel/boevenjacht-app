@@ -19,7 +19,8 @@ function waitForChange(
   })
 }
 
-it('een deelnemer ziet realtime dat een ander een team kiest; een buitenstaander niet', async () => {
+// Realtime heeft na `npm run db:reset` even nodig om op te starten: daarom retry.
+it('een deelnemer ziet realtime dat een ander een team kiest; een buitenstaander niet', { retry: 2, timeout: 30_000 }, async () => {
   const { game_id, join_code } = await createGame()
   const [thieves] = await teamsOf(game_id)
   const erik = await joinedPhone(join_code, 'Erik')

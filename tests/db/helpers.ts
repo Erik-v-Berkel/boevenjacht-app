@@ -98,3 +98,68 @@ export async function eventTypes(gameId: string) {
 }
 
 export const minutes = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 60_000
+
+/** Gestart spel; players[0] is de boef. */
+export async function startedGame(settings: Record<string, unknown> = {}) {
+  const lobby = await fullLobby(settings)
+  await rpc(lobby.players[0].phone, 'start_game', { p_game_id: lobby.game_id })
+  return lobby
+}
+
+/** Uploadt een (nep)foto naar Storage en geeft het pad terug. */
+export async function uploadPhoto(phone: SupabaseClient, gameId: string) {
+  const path = `${gameId}/${crypto.randomUUID()}.jpg`
+  const { error } = await phone.storage
+    .from('photos')
+    .upload(path, new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' }), { contentType: 'image/jpeg' })
+  if (error) throw error
+  return path
+}
+
+export interface PhotoResult {
+  photo_id: string
+  status: 'accepted' | 'rejected'
+  reject_reason?: string
+  bonus_min: number
+  label?: string
+  ends_at?: string
+}
+
+export const AT = {
+  burgplatz: [51.2277, 6.7716],
+  lambertus: [51.2289, 6.7729],
+  koe: [51.222, 6.7793], // ±20 m van de lijn over de Kö
+  hofgarten: [51.23, 6.782], // binnen de parkpolygoon
+  uerige: [51.2263, 6.774],
+  schumacher: [51.2256, 6.7743],
+  hbf: [51.22, 6.794], // Hauptbahnhof: buiten het speelveld
+  nergens: [51.2245, 6.7765], // in het speelveld, niet bij een bezienswaardigheid
+} as const
+
+/** Uploadt en registreert een foto. */
+export async function submit(
+  phone: SupabaseClient,
+  gameId: string,
+  opts: { type: 'beer' | 'sight'; at: readonly [number, number]; accuracy?: number; bar?: string; clientId?: string; path?: string },
+) {
+  const path = opts.path ?? (await uploadPhoto(phone, gameId))
+  return rpc<PhotoResult>(phone, 'submit_photo', {
+    p_game_id: gameId,
+    p_client_id: opts.clientId ?? crypto.randomUUID(),
+    p_type: opts.type,
+    p_storage_path: path,
+    p_lat: opts.at[0],
+    p_lng: opts.at[1],
+    p_accuracy_m: opts.accuracy ?? 10,
+    p_bar_name: opts.bar ?? null,
+  })
+}
+
+/** Wachttijd overslaan: alle foto's van het spel 11 minuten terugzetten. */
+export async function skipCooldown(gameId: string) {
+  const { error } = await admin
+    .from('photos')
+    .update({ created_at: new Date(Date.now() - 11 * 60_000).toISOString() })
+    .eq('game_id', gameId)
+  if (error) throw error
+}

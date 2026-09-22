@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabase'
 import { formatDuration, gameMinutesMs, needsTick, phaseAt } from '../lib/clock'
 import { useServerClock, useServerNow } from '../lib/useServerClock'
 import type { GameData } from '../lib/useGameData'
-import type { GameEvent, Player, Team } from '../lib/types'
+import type { GameEvent, Photo, Player, Team } from '../lib/types'
+import { usePhotoUrls } from '../lib/photos'
 import { Rules } from '../components/Rules'
 import EndScreen from './EndScreen'
+import ThiefCamera from './ThiefCamera'
 
 type Tab = 'klok' | 'kaart' | 'camera' | 'regels'
 
@@ -43,11 +45,18 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
           <>
             <Countdown data={data} team={myTeam} now={now} />
             <BonusBar data={data} />
-            <Feed events={data.events} players={data.players} teams={data.teams} />
+            <Feed data={data} />
           </>
         )}
         {tab === 'kaart' && <Placeholder text="De kaart komt in een volgende versie." />}
-        {tab === 'camera' && <Placeholder text="De camera komt in een volgende versie." />}
+        {tab === 'camera' &&
+          (myTeam?.role === 'thieves' ? (
+            <ThiefCamera data={data} now={now} />
+          ) : myTeam?.role === 'police' ? (
+            <PoliceCamera data={data} now={now} />
+          ) : (
+            <Placeholder text="Je zit niet in een team, dus je kunt geen foto's maken." />
+          ))}
         {tab === 'regels' && <Rules settings={game.settings} />}
       </main>
 
@@ -134,6 +143,14 @@ export function eventText(e: GameEvent, players: Player[], teams: Team[]): { ico
     }
     case 'police_released':
       return { icon: '🚓', text: 'De politie mag vertrekken!' }
+    case 'bonus': {
+      const who = players.find((p) => p.id === e.payload.player_id)?.name
+      const icon = e.payload.photo_type === 'beer' ? '🍺' : '🏛️'
+      const min = Number(e.payload.bonus_min)
+      return { icon, text: `Boeven${who ? ` (${who})` : ''}: ${min > 0 ? `−${min} min` : 'foto'} bij ${e.payload.label}` }
+    }
+    case 'bonus_cap_reached':
+      return { icon: '🧢', text: `Maximale aftrek bereikt (${e.payload.max} min). Foto's leveren de boeven geen tijd meer op.` }
     case 'game_ended': {
       if (e.payload.winner === 'thieves') return { icon: '🦹', text: 'De tijd is op. De boeven zijn ontsnapt!' }
       const team = teams.find((t) => t.id === e.payload.team_id)?.name ?? 'de politie'
@@ -144,12 +161,19 @@ export function eventText(e: GameEvent, players: Player[], teams: Team[]): { ico
   }
 }
 
-function Feed({ events, players, teams }: { events: GameEvent[]; players: Player[]; teams: Team[] }) {
+function Feed({ data }: { data: GameData }) {
+  const { events, players, teams, photos } = data
+  const photoById = new Map(photos.map((p) => [p.id, p]))
+  const urls = usePhotoUrls(photos.filter((p) => p.status === 'accepted').map((p) => p.storage_path))
+  const [open, setOpen] = useState<Photo | null>(null)
+
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold text-slate-400 uppercase">Feed</h2>
       {events.map((e) => {
         const { icon, text } = eventText(e, players, teams)
+        const photo = typeof e.payload.photo_id === 'string' ? photoById.get(e.payload.photo_id) : undefined
+        const url = photo && urls[photo.storage_path]
         return (
           <div key={e.id} className="flex gap-3 rounded-xl bg-slate-800/60 p-3 ring-1 ring-slate-800">
             <span className="text-2xl">{icon}</span>
@@ -157,11 +181,29 @@ function Feed({ events, players, teams }: { events: GameEvent[]; players: Player
               <p>{text}</p>
               <p className="text-xs text-slate-500">{clockTime(e.created_at)}</p>
             </div>
+            {photo && (
+              <button onClick={() => setOpen(photo)} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-700">
+                {url && <img src={url} alt="" className="h-full w-full object-cover" />}
+              </button>
+            )}
           </div>
         )
       })}
+      {open && urls[open.storage_path] && (
+        <button className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4" onClick={() => setOpen(null)}>
+          <img src={urls[open.storage_path]} alt="" className="max-h-full max-w-full rounded-xl" />
+        </button>
+      )}
     </section>
   )
+}
+
+function PoliceCamera({ data, now }: { data: GameData; now: number }) {
+  const policeStart = Date.parse(data.game.police_start_at!)
+  if (now < policeStart) {
+    return <Placeholder text={`De camera is geblokkeerd tot jullie mogen vertrekken (nog ${formatDuration(policeStart - now)}).`} />
+  }
+  return <Placeholder text="Vangstfoto maken komt in een volgende versie." />
 }
 
 function Placeholder({ text }: { text: string }) {
