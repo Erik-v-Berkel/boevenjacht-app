@@ -1,24 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formatDuration } from '../lib/clock'
-import type { Position } from '../lib/geo'
+import { checkSight, type Position } from '../lib/geo'
 import { enqueue, useQueueItem } from '../lib/uploadQueue'
 import type { GameData } from '../lib/useGameData'
-import type { GeoState } from '../lib/useGeolocation'
+import { devModeAllowed, type GeoState } from '../lib/useGeolocation'
+import type { Team } from '../lib/types'
 import { CameraCapture } from '../components/CameraCapture'
+import { DevGps } from '../components/DevGps'
 import { UploadStatus } from '../components/UploadStatus'
 import { Button } from '../components/ui'
 
+const CHECKPOINTS_MAX = 2 // zelfde als checkpoint_radars_max op de server
+
+type Kind = 'capture' | 'checkpoint'
 type Step =
   | { name: 'start' }
-  | { name: 'camera' }
-  | { name: 'confirm'; blob: Blob; url: string; pos: Position | null }
+  | { name: 'camera'; kind: Kind }
+  | { name: 'confirm'; kind: Kind; blob: Blob; url: string; pos: Position | null }
   | { name: 'sent'; clientId: string }
 
-export default function PoliceCamera({ data, now, geo }: { data: GameData; now: number; geo: GeoState }) {
+export default function PoliceCamera({ data, now, geo, team }: { data: GameData; now: number; geo: GeoState; team: Team | null }) {
   const policeStart = Date.parse(data.game.police_start_at!)
   const [step, setStep] = useState<Step>({ name: 'start' })
   const [armed, setArmed] = useState(false)
   const sentItem = useQueueItem(step.name === 'sent' ? step.clientId : null)
+  const dev = devModeAllowed(data.game.settings.time_scale)
+
+  const mine = data.photos.filter((p) => p.type === 'checkpoint' && p.status === 'accepted' && p.team_id === team?.id)
+  const usedSights = useMemo(() => new Set(mine.flatMap((p) => (p.sight_id ? [p.sight_id] : []))), [mine])
+  const pos = geo.kind === 'ok' ? geo.pos : null
+  const sightCheck = pos ? checkSight(data.sights, usedSights, pos) : null
+  const checkpointsLeft = CHECKPOINTS_MAX - mine.length
 
   // Tweede tik moet binnen 4 seconden komen
   useEffect(() => {
@@ -43,34 +55,38 @@ export default function PoliceCamera({ data, now, geo }: { data: GameData; now: 
     return (
       <CameraCapture
         onCancel={() => setStep({ name: 'start' })}
-        onCapture={(blob) =>
-          setStep({ name: 'confirm', blob, url: URL.createObjectURL(blob), pos: geo.kind === 'ok' ? geo.pos : null })
-        }
+        onCapture={(blob) => setStep({ name: 'confirm', kind: step.kind, blob, url: URL.createObjectURL(blob), pos })}
       />
     )
   }
 
   if (step.name === 'confirm') {
     const send = () => {
-      if (!armed) {
+      if (step.kind === 'capture' && !armed) {
         navigator.vibrate?.(50)
         return setArmed(true)
       }
       const clientId = crypto.randomUUID()
-      void enqueue({ clientId, gameId: data.game.id, kind: 'capture', blob: step.blob, position: step.pos })
+      void enqueue({ clientId, gameId: data.game.id, kind: step.kind, blob: step.blob, position: step.pos })
       setStep({ name: 'sent', clientId })
     }
     return (
       <div className="flex flex-col gap-3">
-        <img src={step.url} alt="Vangstfoto" className="rounded-2xl" />
-        <p className="text-sm text-slate-400">Staan de boeven er herkenbaar op?</p>
-        <button
-          onClick={send}
-          className={`rounded-2xl px-4 py-5 text-2xl font-black text-white transition ${armed ? 'animate-pulse bg-red-600' : 'bg-blue-600'}`}
-        >
-          {armed ? 'Tik nogmaals om te bevestigen' : '🚨 Halt, Polizei! Gevangen!'}
-        </button>
-        <Button variant="secondary" onClick={() => setStep({ name: 'camera' })}>
+        <img src={step.url} alt={step.kind === 'capture' ? 'Vangstfoto' : 'Controlepost'} className="rounded-2xl" />
+        {step.kind === 'capture' ? (
+          <>
+            <p className="text-sm text-slate-400">Staan de boeven er herkenbaar op?</p>
+            <button
+              onClick={send}
+              className={`rounded-2xl px-4 py-5 text-2xl font-black text-white transition ${armed ? 'animate-pulse bg-red-600' : 'bg-blue-600'}`}
+            >
+              {armed ? 'Tik nogmaals om te bevestigen' : '🚨 Halt, Polizei! Gevangen!'}
+            </button>
+          </>
+        ) : (
+          <Button onClick={send}>📍 Controlepost versturen</Button>
+        )}
+        <Button variant="secondary" onClick={() => setStep({ name: 'camera', kind: step.kind })}>
           Opnieuw
         </Button>
       </div>
@@ -79,16 +95,43 @@ export default function PoliceCamera({ data, now, geo }: { data: GameData; now: 
 
   if (step.name === 'sent') return <UploadStatus item={sentItem} onBack={() => setStep({ name: 'start' })} />
 
+  const checkpointProblem =
+    checkpointsLeft <= 0
+      ? `Jullie hebben al ${CHECKPOINTS_MAX} controleposten gehad`
+      : !pos
+        ? 'Locatie zoeken…'
+        : sightCheck?.kind === 'used'
+          ? `Jullie hadden al een controlepost bij ${sightCheck.sight.name}`
+          : sightCheck?.kind === 'inaccurate'
+            ? 'GPS nog niet nauwkeurig genoeg, even wachten…'
+            : sightCheck?.kind === 'none'
+              ? `Te ver weg${sightCheck.nearest ? `: ${sightCheck.nearest.name} is ${Math.round(sightCheck.distance)} m` : ''}`
+              : null
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-black">Festnahme</h1>
+      {dev && <DevGps sights={data.sights} />}
       <p className="text-slate-300">
         Heb je de boeven? Maak een foto waarop ze herkenbaar staan en druk op <b>"Halt, Polizei! Gevangen!"</b>. De eerste vangstfoto
         die binnenkomt, wint.
       </p>
-      <button onClick={() => setStep({ name: 'camera' })} className="rounded-2xl bg-blue-600 p-6 text-left text-white">
+      <button onClick={() => setStep({ name: 'camera', kind: 'capture' })} className="rounded-2xl bg-blue-600 p-6 text-left text-white">
         <span className="text-4xl">📸</span> <b className="text-2xl">Vangstfoto maken</b>
       </button>
+
+      <button
+        disabled={!!checkpointProblem}
+        onClick={() => setStep({ name: 'camera', kind: 'checkpoint' })}
+        className="rounded-2xl bg-orange-500 p-5 text-left text-slate-900 disabled:opacity-40"
+      >
+        <span className="text-3xl">📍</span> <b className="text-xl">Controlepost: +1 radar</b>
+        <span className="block">
+          Foto bij een bezienswaardigheid · nog {Math.max(0, checkpointsLeft)}× ·{' '}
+          {sightCheck?.kind === 'ok' && !checkpointProblem ? `je bent bij ${sightCheck.sight.name}` : checkpointProblem}
+        </span>
+      </button>
+      <p className="text-sm text-slate-400">⚠️ Een controlepost is voor iedereen zichtbaar, ook voor de boeven.</p>
     </div>
   )
 }

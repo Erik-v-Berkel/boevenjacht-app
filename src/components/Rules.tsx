@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { devModeOn, setDevMode } from '../lib/useGeolocation'
+import { play, setSound, soundOn } from '../lib/sound'
 import type { GameSettings } from '../lib/types'
 
 /** Nep-GPS aan/uit in testspellen, ook in de app op het beginscherm (daar kun je geen ?dev=1 typen). */
@@ -21,6 +22,21 @@ function DevToggle() {
   )
 }
 
+function SoundToggle() {
+  const [on, setOn] = useState(soundOn)
+  const toggle = () => {
+    setSound(!on)
+    setOn(!on)
+    if (!on) play('chime')
+  }
+  return (
+    <button onClick={toggle} className="rounded-lg bg-slate-800 px-3 py-2 text-left ring-1 ring-slate-700">
+      {on ? '🔊' : '🔇'} Geluid: <b>{on ? 'aan' : 'uit'}</b>
+      <span className="block text-sm text-slate-400">Sirene, Prost-glazen, sonar-ping. Staat je iPhone op stil, dan hoor je niets.</span>
+    </button>
+  )
+}
+
 /** Korte versie van de spelregels (PLAN.md §2), met de waarden van dit spel. */
 export function Rules({ settings: s }: { settings: GameSettings }) {
   const idle = s.idle_ping_min ?? 30
@@ -31,6 +47,7 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
   return (
     <article className="flex flex-col gap-4 text-slate-200 [&_h2]:text-lg [&_h2]:font-bold [&_li]:ml-5 [&_li]:list-disc">
       <h1 className="text-2xl font-black">Spielregeln</h1>
+      <SoundToggle />
       {s.time_scale !== 1 && (
         <>
           <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200">Testmodus: de tijd loopt {s.time_scale}× zo snel.</p>
@@ -73,6 +90,10 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
         <ul>
           <li>Maak een foto waarop de boeven herkenbaar staan en druk op "Halt, Polizei! Gevangen!".</li>
           <li>De eerste vangstfoto telt. Dat Polizei-team wint.</li>
+          <li>
+            📍 Controlepost: maak als Polizei-team een foto bij een bezienswaardigheid en krijg een extra radar. Elke bezienswaardigheid 1×
+            per team, maximaal 2. Let op: de boeven zien waar jullie waren!
+          </li>
           <li>
             Elk Polizei-team heeft {radars}× een radar (op de kaart). Alleen jullie team ziet dan een cirkel rond de boeven. De andere
             teams zien wél dat jullie hem gebruikt hebben, en de boeven ook.

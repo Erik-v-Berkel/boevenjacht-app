@@ -6,11 +6,13 @@ import type { GameData } from '../lib/useGameData'
 import type { Player } from '../lib/types'
 import { ErrorText, Screen } from '../components/ui'
 import { HoldButton } from '../components/HoldButton'
+import { QrCode } from '../components/QrCode'
 
 export default function Lobby({ data, me }: { data: GameData; me: Player }) {
   const { game, teams, players } = data
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [showQr, setShowQr] = useState(false)
   const max = game.settings.max_players_per_team
 
   const choose = async (teamId: string | null) => {
@@ -54,10 +56,24 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
           <p className="text-sm text-slate-400">Lobby · spelcode</p>
           <p className="font-mono text-3xl font-black tracking-widest text-yellow-400">{game.join_code}</p>
         </div>
-        <button className="rounded-lg bg-slate-800 px-3 py-2 text-sm ring-1 ring-slate-700" onClick={share}>
-          Delen
-        </button>
+        <div className="flex gap-2">
+          <button className="rounded-lg bg-slate-800 px-3 py-2 text-sm ring-1 ring-slate-700" onClick={() => setShowQr(true)}>
+            📱 QR
+          </button>
+          <button className="rounded-lg bg-slate-800 px-3 py-2 text-sm ring-1 ring-slate-700" onClick={share}>
+            Delen
+          </button>
+        </div>
       </header>
+
+      {showQr && (
+        <button className="fixed inset-0 z-[3000] flex flex-col items-center justify-center gap-4 bg-slate-950/95 p-6" onClick={() => setShowQr(false)}>
+          <p className="text-xl font-bold">Scan om mee te doen</p>
+          <QrCode url={joinLink(location.origin, game.join_code)} size={Math.min(320, window.innerWidth - 80)} />
+          <p className="font-mono text-4xl font-black tracking-widest text-yellow-400">{game.join_code}</p>
+          <p className="text-sm text-slate-400">Tik om te sluiten</p>
+        </button>
+      )}
 
       <p className="text-slate-300">
         {me.team_id ? 'Je kunt wisselen zolang het spel niet gestart is.' : 'Kies je team.'}

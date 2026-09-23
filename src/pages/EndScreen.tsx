@@ -8,6 +8,8 @@ import type { Photo, Player } from '../lib/types'
 import { FeedItem, Lightbox } from '../components/FeedItem'
 import { GameMap } from '../components/GameMap'
 import { ReplayMap } from '../components/ReplayMap'
+import { computeAwards } from '../lib/awards'
+import { useLocationHistory } from '../lib/useLocationHistory'
 import { Button } from '../components/ui'
 
 export default function EndScreen({ data, me, now }: { data: GameData; me: Player; now: number }) {
@@ -38,6 +40,21 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
   )
   const usedSightIds = useMemo(() => new Set(bonus.flatMap((p) => (p.sight_id ? [p.sight_id] : []))), [bonus])
   const [open, setOpen] = useState<Photo | null>(null)
+  const tracks = useLocationHistory(game.id)
+  const awards = useMemo(
+    () =>
+      computeAwards({
+        players,
+        teams,
+        photos: photos.filter((p) => p.status === 'accepted'),
+        reactions: data.reactions,
+        comments: data.comments,
+        pings: data.pings,
+        tracks,
+        labels,
+      }),
+    [players, teams, photos, data.reactions, data.comments, data.pings, tracks, labels],
+  )
 
   useEffect(() => {
     const colors = winner === 'police' ? ['#2563eb', '#ffffff', '#dc2626'] : ['#dc2626', '#facc15', '#ffffff']
@@ -78,10 +95,26 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
         <Stat label="Bezienswaardigheden" value={`🏛️ ${bonus.filter((p) => p.type === 'sight').length}`} />
       </dl>
 
+      {awards.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-slate-400 uppercase">Prijzen</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {awards.map((a) => (
+              <div key={a.title} className="rounded-xl bg-slate-800 p-3 text-center ring-1 ring-yellow-400/30">
+                <p className="text-3xl">{a.icon}</p>
+                <p className="text-xs font-semibold tracking-wide text-yellow-400 uppercase">{a.title}</p>
+                <p className="mt-1 text-lg font-bold">{a.winner}</p>
+                <p className="text-sm text-slate-400">{a.detail}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-2 text-sm font-semibold text-slate-400 uppercase">Replay: wie liep waar?</h2>
         <ReplayMap
-          gameId={game.id}
+          tracks={tracks}
           start={Date.parse(game.started_at!)}
           end={endedAt}
           timeScale={game.settings.time_scale}
@@ -114,7 +147,7 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
               <button key={p.id} onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden rounded-lg bg-slate-800">
                 {urls[p.storage_path] && <img src={urls[p.storage_path]} alt="" className="h-full w-full object-cover" />}
                 <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 text-left text-[10px]">
-                  {p.type === 'beer' ? '🍺' : p.type === 'sight' ? '🏛️' : p.status === 'accepted' ? '🚨' : '⏱️'} {labels[p.id]}
+                  {p.type === 'beer' ? '🍺' : p.type === 'sight' ? '🏛️' : p.type === 'checkpoint' ? '📍' : p.status === 'accepted' ? '🚨' : '⏱️'} {labels[p.id]}
                 </span>
               </button>
             ))}

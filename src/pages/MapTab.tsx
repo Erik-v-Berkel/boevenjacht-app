@@ -65,7 +65,8 @@ export default function MapTab({
 
 /** Eén keer per politieteam: vage cirkel rond de boeven, alleen voor dit team. */
 function RadarButton({ data, team }: { data: GameData; team: Team }) {
-  const max = data.game.settings.radars_per_team ?? 1
+  const checkpoints = data.photos.filter((p) => p.type === 'checkpoint' && p.status === 'accepted' && p.team_id === team.id).length
+  const max = (data.game.settings.radars_per_team ?? 1) + checkpoints
   const left = max - data.pings.filter((p) => p.kind === 'radar' && p.team_id === team.id).length
   const [armed, setArmed] = useState(false)
   const [busy, setBusy] = useState(false)

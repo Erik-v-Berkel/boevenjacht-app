@@ -34,6 +34,8 @@ export function eventText(e: EventLike, players: Named[], teams: Named[]): { ico
     case 'game_ended':
       if (e.payload.winner === 'thieves') return { icon: '🦹', text: 'Entkommen! De tijd is op, de boeven zijn ontsnapt!' }
       return { icon: '🏆', text: `Spel voorbij: gewonnen door ${team}!` }
+    case 'checkpoint':
+      return { icon: '📍', text: `${team} heeft een controlepost bij ${e.payload.label}: +1 radar!` }
     case 'ping': {
       const located = e.payload.located !== false
       if (e.payload.kind === 'radar') {

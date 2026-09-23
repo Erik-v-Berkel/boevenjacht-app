@@ -4,6 +4,7 @@ import type { Polygon } from 'geojson'
 import type { Position } from '../lib/geo'
 import type { Photo, Ping, Sight } from '../lib/types'
 import { timeAgo } from '../lib/clock'
+import { drawPlayArea } from './playArea'
 
 export interface Teammate {
   name: string
@@ -83,12 +84,7 @@ export function GameMap(props: GameMapProps) {
   useEffect(() => {
     const g = layers.current!.area
     g.clearLayers()
-    if (props.playArea) {
-      L.geoJSON(props.playArea, {
-        style: { color: '#facc15', weight: 3, fill: false, dashArray: '8 6' },
-        interactive: false,
-      }).addTo(g)
-    }
+    if (props.playArea) drawPlayArea(g, props.playArea)
   }, [props.playArea])
 
   // Bezienswaardigheden: gekleurd = beschikbaar, grijs = gebruikt

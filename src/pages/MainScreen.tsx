@@ -10,6 +10,8 @@ import { useWakeLock } from '../lib/useWakeLock'
 import { useTeamLocations } from '../lib/useTeamLocations'
 import { useOnline } from '../lib/useOnline'
 import { usePush } from '../lib/push'
+import { play, type SoundName } from '../lib/sound'
+import type { GameEvent } from '../lib/types'
 import type { GameData } from '../lib/useGameData'
 import type { Photo, Player, Team } from '../lib/types'
 import { Rules } from '../components/Rules'
@@ -39,7 +41,7 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
   const geo = useGeolocation(dev)
   const outside = geo.kind === 'ok' && !insidePlayArea(game.settings.play_area, geo.pos.lat, geo.pos.lng)
   const team = useTeamLocations(data, me, myTeam, geo, phase !== 'ended')
-  const toasts = useEventToasts(data)
+  const { toasts, big } = useEventToasts(data)
   const online = useOnline(game.id, me.id)
   useWakeLock(phase !== 'ended')
 
@@ -85,12 +87,23 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
           (myTeam?.role === 'thieves' ? (
             <ThiefCamera data={data} now={now} geo={geo} />
           ) : myTeam?.role === 'police' ? (
-            <PoliceCamera data={data} now={now} geo={geo} />
+            <PoliceCamera data={data} now={now} geo={geo} team={myTeam} />
           ) : (
             <p className="mt-10 text-center text-slate-400">Je zit niet in een team, dus je kunt geen foto's maken.</p>
           ))}
         {tab === 'regels' && <Rules settings={game.settings} />}
       </main>
+
+      {phase === 'running' && <FinalCountdown endsAt={Date.parse(game.ends_at!)} now={now} scale={game.settings.time_scale} />}
+      {big && (
+        <div className="pointer-events-none fixed inset-0 z-[2600] grid place-items-center bg-black/70 p-6 text-center">
+          <div className="animate-pulse">
+            <p className="text-8xl">{big.icon}</p>
+            <p className="mt-4 text-5xl font-black text-yellow-400">{big.title}</p>
+            <p className="mt-3 text-xl font-semibold">{big.text}</p>
+          </div>
+        </div>
+      )}
 
       <div className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-[2000] mx-auto flex max-w-md flex-col gap-2 px-3">
         {toasts.map((t) => (
@@ -123,9 +136,29 @@ function Banner({ color, children }: { color: 'amber' | 'red'; children: React.R
   return <p className={`rounded-lg px-3 py-2 font-semibold ring-1 ${cls}`}>{children}</p>
 }
 
-/** Melding + trillen bij nieuwe gebeurtenissen (foto's, Polizei vrij, pings, vangst). */
+function soundFor(e: GameEvent): SoundName | null {
+  switch (e.type) {
+    case 'police_released':
+      return 'siren'
+    case 'bonus':
+      return e.payload.photo_type === 'beer' ? 'clink' : 'chime'
+    case 'checkpoint':
+      return 'chime'
+    case 'ping':
+      return 'ping'
+    case 'capture':
+      return 'alarm'
+    case 'game_ended':
+      return e.payload.winner === 'thieves' ? 'fanfare' : null
+    default:
+      return null
+  }
+}
+
+/** Melding + geluid + trillen bij nieuwe gebeurtenissen; groot scherm als de Polizei mag vertrekken. */
 function useEventToasts(data: GameData) {
   const [toasts, setToasts] = useState<{ id: number; icon: string; text: string }[]>([])
+  const [big, setBig] = useState<{ icon: string; title: string; text: string } | null>(null)
   const lastSeen = useRef<number | null>(null)
 
   useEffect(() => {
@@ -138,13 +171,41 @@ function useEventToasts(data: GameData) {
     lastSeen.current = Math.max(lastSeen.current, newest)
     if (fresh.length === 0) return
     navigator.vibrate?.([200, 100, 200])
+    const sound = fresh.map(soundFor).find((s) => s !== null)
+    if (sound) play(sound)
+    if (fresh.some((e) => e.type === 'police_released')) {
+      setBig({ icon: '🚨', title: 'Achtung!', text: 'Die Jagd beginnt! De Polizei mag vertrekken.' })
+      setTimeout(() => setBig(null), 4000)
+    }
     const added = fresh.map((e) => ({ id: e.id, ...eventText(e, data.players, data.teams) }))
     setToasts((t) => [...t, ...added])
     const ids = new Set(added.map((a) => a.id))
     setTimeout(() => setToasts((t) => t.filter((x) => !ids.has(x.id))), 6000)
   }, [data.events, data.players, data.teams])
 
-  return toasts
+  return { toasts, big }
+}
+
+/** Laatste minuut (speltijd): grote rode aftelling over alle tabs, met tikjes in de laatste 10 echte seconden. */
+function FinalCountdown({ endsAt, now, scale }: { endsAt: number; now: number; scale: number }) {
+  const left = endsAt - now
+  const secs = Math.ceil((left * scale) / 1000)
+  const realSecs = Math.ceil(left / 1000)
+  const lastTick = useRef<number | null>(null)
+  useEffect(() => {
+    if (left > 0 && realSecs <= 10 && lastTick.current !== realSecs) {
+      lastTick.current = realSecs
+      play('tick')
+      navigator.vibrate?.(30)
+    }
+  }, [left, realSecs])
+  if (left <= 0 || secs > 60) return null
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-[35%] z-[2400] text-center">
+      <p className="text-lg font-bold text-red-300 drop-shadow">Nog even volhouden…</p>
+      <p className="font-mono text-[9rem] leading-none font-black text-red-500 tabular-nums drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">{secs}</p>
+    </div>
+  )
 }
 
 function Countdown({ data, team, now }: { data: GameData; team: Team | null; now: number }) {

@@ -34,7 +34,7 @@ export interface Sight {
   sort: number
 }
 
-export type PhotoType = 'beer' | 'sight' | 'capture'
+export type PhotoType = 'beer' | 'sight' | 'capture' | 'checkpoint'
 
 export interface Photo {
   id: string
@@ -91,7 +91,7 @@ export interface Player {
   last_seen_at: string
 }
 
-export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended' | 'ping'
+export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended' | 'ping' | 'checkpoint'
 
 export type PingKind = 'idle' | 'final' | 'radar'
 

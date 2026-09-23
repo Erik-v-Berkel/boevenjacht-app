@@ -39,6 +39,7 @@ const phone = async (geo) => {
 }
 const shot = (p, name, full = false) => p.screenshot({ path: `${OUT}/${name}.png`, fullPage: full })
 const hold = async (p, sel, ms) => {
+  await p.locator(sel).scrollIntoViewIfNeeded()
   const box = await p.locator(sel).boundingBox()
   await p.mouse.move(box.x + 20, box.y + 10)
   await p.mouse.down(); await p.waitForTimeout(ms); await p.mouse.up()

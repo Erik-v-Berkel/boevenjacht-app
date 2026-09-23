@@ -52,6 +52,12 @@ export function UploadStatus({ item, onBack }: { item: QueueItem | undefined; on
             <p className="text-6xl">🚓</p>
             <p className="text-2xl font-bold">Boeven gevangen!</p>
           </>
+        ) : item.kind === 'checkpoint' ? (
+          <>
+            <p className="text-6xl">📡</p>
+            <p className="text-2xl font-bold">Controlepost ✓ +1 radar</p>
+            <p className="text-slate-400">{r.label}</p>
+          </>
         ) : (
           <>
             <p className="text-6xl">✅</p>
@@ -63,7 +69,7 @@ export function UploadStatus({ item, onBack }: { item: QueueItem | undefined; on
       ) : (
         <>
           <p className="text-6xl">❌</p>
-          <p className="text-2xl font-bold">{item.kind === 'capture' ? 'Niet geteld' : 'Afgewezen'}</p>
+          <p className="text-2xl font-bold">{item.kind === 'capture' || item.kind === 'checkpoint' ? 'Niet geteld' : 'Afgewezen'}</p>
           <p className="text-slate-300">{r.reject_reason}</p>
         </>
       )}

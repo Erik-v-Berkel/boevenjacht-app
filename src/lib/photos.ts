@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 import type { Position } from './geo'
 import type { Photo, Sight } from './types'
 
-export type PhotoKind = 'beer' | 'sight' | 'capture'
+export type PhotoKind = 'beer' | 'sight' | 'capture' | 'checkpoint'
 
 export interface SubmitResult {
   photo_id: string
@@ -41,8 +41,13 @@ export async function sendOnce(u: PhotoUpload): Promise<SubmitResult> {
     p_accuracy_m: u.position?.accuracy ?? null,
   }
   const { data, error } =
-    u.kind === 'capture'
-      ? await supabase.rpc('submit_capture', { p_game_id: u.gameId, p_client_id: u.clientId, p_storage_path: path, ...pos })
+    u.kind === 'capture' || u.kind === 'checkpoint'
+      ? await supabase.rpc(u.kind === 'capture' ? 'submit_capture' : 'submit_checkpoint', {
+          p_game_id: u.gameId,
+          p_client_id: u.clientId,
+          p_storage_path: path,
+          ...pos,
+        })
       : await supabase.rpc('submit_photo', {
           p_game_id: u.gameId,
           p_client_id: u.clientId,
@@ -85,6 +90,7 @@ export function usePhotoUrls(paths: string[]): Record<string, string> {
 export function photoLabel(photo: Photo, sights: Sight[]): string {
   if (photo.type === 'sight') return sights.find((s) => s.id === photo.sight_id)?.name ?? 'Bezienswaardigheid'
   if (photo.type === 'beer') return photo.bar_name ?? 'Kroeg'
+  if (photo.type === 'checkpoint') return `Controlepost ${sights.find((s) => s.id === photo.sight_id)?.name ?? ''}`.trim()
   return 'Vangstfoto'
 }
 

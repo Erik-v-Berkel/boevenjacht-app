@@ -1,39 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import type { Polygon } from 'geojson'
-import { supabase } from '../lib/supabase'
 import { clockTime } from '../lib/events'
 import { formatDuration } from '../lib/clock'
+import { drawPlayArea } from './playArea'
+import { pointAt as at, type Tracks } from '../lib/trackMath'
 import type { Photo, Ping, Player, Team } from '../lib/types'
-
-interface Point {
-  t: number
-  lat: number
-  lng: number
-}
 
 const PLAY_MS = 40_000 // hele spel in 40 seconden
 const PING_VISIBLE_MS = 10 * 60_000 // speltijd
-
-/** Laatste punt op of vóór t (binair zoeken). */
-function at(track: Point[], t: number): Point | null {
-  let lo = 0
-  let hi = track.length - 1
-  if (hi < 0 || track[0].t > t) return null
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1
-    if (track[mid].t <= t) lo = mid
-    else hi = mid - 1
-  }
-  return track[lo]
-}
 
 /**
  * Het hele spel afspelen: routes van alle spelers, foto's en pings op het moment dat ze gebeurden.
  * Locaties zijn pas na afloop leesbaar (RLS). Geen geschiedenis (ouder spel)? Dan `fallback`.
  */
 export function ReplayMap({
-  gameId,
+  tracks,
   start,
   end,
   timeScale,
@@ -44,7 +26,7 @@ export function ReplayMap({
   playArea,
   fallback,
 }: {
-  gameId: string
+  tracks: Tracks | null
   start: number
   end: number
   timeScale: number
@@ -55,29 +37,11 @@ export function ReplayMap({
   playArea?: Polygon
   fallback: ReactNode
 }) {
-  const [tracks, setTracks] = useState<Map<string, Point[]> | null>(null)
   const [t, setT] = useState(end)
   const [playing, setPlaying] = useState(false)
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const layers = useRef<{ markers: Map<string, L.Marker>; events: L.LayerGroup } | null>(null)
-
-  useEffect(() => {
-    void supabase
-      .from('location_history')
-      .select('player_id, lat, lng, recorded_at')
-      .eq('game_id', gameId)
-      .order('recorded_at')
-      .limit(20_000)
-      .then(({ data }) => {
-        const m = new Map<string, Point[]>()
-        for (const r of data ?? []) {
-          if (!m.has(r.player_id)) m.set(r.player_id, [])
-          m.get(r.player_id)!.push({ t: Date.parse(r.recorded_at), lat: r.lat, lng: r.lng })
-        }
-        setTracks(m)
-      })
-  }, [gameId])
 
   // Via een ref: het spel herlaadt bij elke wijziging, maar de kaart moet maar één keer opgebouwd worden.
   const info = useRef({ teams, players, playArea })
@@ -98,9 +62,7 @@ export function ReplayMap({
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(m)
-    if (playArea) {
-      L.geoJSON(playArea, { style: { color: '#facc15', weight: 2, fill: false, dashArray: '8 6' }, interactive: false }).addTo(m)
-    }
+    if (playArea) drawPlayArea(m, playArea)
     const markers = new Map<string, L.Marker>()
     for (const [playerId, track] of tracks) {
       const color = colorOf(playerId)

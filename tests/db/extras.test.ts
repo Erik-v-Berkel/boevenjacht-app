@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { distance } from '@turf/distance'
 import { point } from '@turf/helpers'
-import { admin, AT, createGame, eventTypes, gameRow, joinedPhone, newPhone, rpc, startedGame, submit, teamsOf } from './helpers'
+import { admin, AT, createGame, eventTypes, gameRow, joinedPhone, newPhone, rpc, startedGame, submit, teamsOf, uploadPhoto } from './helpers'
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
 const inMin = (min: number) => new Date(Date.now() + min * 60_000).toISOString()
@@ -216,5 +216,44 @@ describe('Polizei-teams in de lobby', () => {
   it('niet meer na de start', async () => {
     const { game_id, players } = await startedGame()
     await expect(rpc(players[0].phone, 'set_police_teams', { p_game_id: game_id, p_count: 2 })).rejects.toThrow('al begonnen')
+  })
+})
+
+describe('controlepost', () => {
+  const checkpoint = async (phone: Awaited<ReturnType<typeof newPhone>>, gameId: string, at: readonly [number, number], accuracy = 10) =>
+    rpc<{ status: string; reject_reason?: string; label?: string }>(phone, 'submit_checkpoint', {
+      p_game_id: gameId,
+      p_client_id: crypto.randomUUID(),
+      p_storage_path: await uploadPhoto(phone, gameId),
+      p_lat: at[0],
+      p_lng: at[1],
+      p_accuracy_m: accuracy,
+    })
+
+  it('geeft een extra radar, elke bezienswaardigheid 1× per team, max 2', async () => {
+    const { game_id, players } = await runningFor(5)
+    const a = players[1].phone
+    await rpc(a, 'use_radar', { p_game_id: game_id })
+    await expect(rpc(a, 'use_radar', { p_game_id: game_id })).rejects.toThrow('al gebruikt')
+
+    expect(await checkpoint(a, game_id, AT.burgplatz)).toMatchObject({ status: 'accepted', label: 'Burgplatz & Schlossturm' })
+    expect(await eventTypes(game_id)).toContain('checkpoint')
+    await rpc(a, 'use_radar', { p_game_id: game_id }) // extra radar
+
+    expect((await checkpoint(a, game_id, AT.burgplatz)).reject_reason).toContain('al een controlepost bij Burgplatz')
+    // ander team mag wel dezelfde bezienswaardigheid
+    expect((await checkpoint(players[2].phone, game_id, AT.burgplatz)).status).toBe('accepted')
+
+    expect((await checkpoint(a, game_id, AT.lambertus)).status).toBe('accepted')
+    expect((await checkpoint(a, game_id, AT.koe)).reject_reason).toContain('al 2 controleposten')
+    expect((await checkpoint(a, game_id, AT.nergens)).status).toBe('rejected')
+  })
+
+  it('niet voor boeven, niet tijdens de voorsprong, niet ver weg', async () => {
+    const { game_id, players } = await startedGame()
+    await expect(checkpoint(players[0].phone, game_id, AT.burgplatz)).rejects.toThrow('Alleen de Polizei')
+    expect((await checkpoint(players[1].phone, game_id, AT.burgplatz)).reject_reason).toBe('De Polizei mag nog niet vertrekken')
+    const r = await runningFor(5)
+    expect((await checkpoint(r.players[1].phone, r.game_id, AT.nergens)).reject_reason).toBe('Je bent niet bij een bezienswaardigheid')
   })
 })

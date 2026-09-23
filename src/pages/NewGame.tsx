@@ -4,6 +4,7 @@ import { navigate } from '../lib/router'
 import { errorMessage } from '../lib/errors'
 import { joinLink } from '../lib/joinCode'
 import { Button, ErrorText, Screen, inputClass } from '../components/ui'
+import { QrCode } from '../components/QrCode'
 
 interface Created {
   game_id: string
@@ -53,6 +54,7 @@ export default function NewGame() {
           <p className="font-mono text-5xl font-black tracking-widest text-yellow-400">{created.join_code}</p>
           <p className="mt-3 text-sm break-all text-slate-400">{link}</p>
         </div>
+        <QrCode url={link} size={220} />
         <Button onClick={share}>{copied ? 'Gekopieerd ✓' : 'Deel link in de groepsapp'}</Button>
         <Button variant="secondary" onClick={() => navigate(`/j/${created.join_code}`)}>
           Zelf meedoen
