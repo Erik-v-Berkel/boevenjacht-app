@@ -1,4 +1,25 @@
+import { useState } from 'react'
+import { devModeOn, setDevMode } from '../lib/useGeolocation'
 import type { GameSettings } from '../lib/types'
+
+/** Nep-GPS aan/uit in testspellen, ook in de app op het beginscherm (daar kun je geen ?dev=1 typen). */
+function DevToggle() {
+  const [on, setOn] = useState(devModeOn)
+  const toggle = () => {
+    setDevMode(!on)
+    setOn(!on)
+  }
+  return (
+    <button onClick={toggle} className="rounded-lg bg-amber-950 px-3 py-2 text-left text-amber-200 ring-1 ring-amber-800">
+      🛠️ Nep-GPS: <b>{on ? 'aan' : 'uit'}</b>
+      <span className="block text-sm text-amber-300/80">
+        {on
+          ? 'Kies een locatie op het camerascherm of tik op de kaart. Tik hier om weer je echte GPS te gebruiken.'
+          : 'Tik om thuis te testen: dan kies je zelf waar je bent.'}
+      </span>
+    </button>
+  )
+}
 
 /** Korte versie van de spelregels (PLAN.md §2), met de waarden van dit spel. */
 export function Rules({ settings: s }: { settings: GameSettings }) {
@@ -11,7 +32,10 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
     <article className="flex flex-col gap-4 text-slate-200 [&_h2]:text-lg [&_h2]:font-bold [&_li]:ml-5 [&_li]:list-disc">
       <h1 className="text-2xl font-black">Spielregeln</h1>
       {s.time_scale !== 1 && (
-        <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200">Testmodus: de tijd loopt {s.time_scale}× zo snel.</p>
+        <>
+          <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200">Testmodus: de tijd loopt {s.time_scale}× zo snel.</p>
+          <DevToggle />
+        </>
       )}
       <section>
         <h2>Tijd</h2>

@@ -7,13 +7,37 @@ export type GeoState =
   | { kind: 'unavailable' }
   | { kind: 'ok'; pos: Position; fake: boolean }
 
-// Nep-GPS voor thuis testen (PLAN.md §10.2). Alleen actief met ?dev=1 in de URL en alleen in
-// testspellen (time_scale ≠ 1) of bij lokaal ontwikkelen.
+// Nep-GPS voor thuis testen (PLAN.md §10.2). Aan met ?dev=1 in de URL of de knop op de Regels-tab
+// (die werkt ook in de app op het beginscherm, zonder adresbalk). De telefoon onthoudt de keuze.
+// Alleen actief in testspellen (time_scale ≠ 1) of bij lokaal ontwikkelen.
 let fake: Position | null = null
 const listeners = new Set<() => void>()
 
+const DEV_KEY = 'boevenjacht-dev'
+let devOn = (() => {
+  try {
+    if (new URLSearchParams(location.search).has('dev')) localStorage.setItem(DEV_KEY, '1')
+    return localStorage.getItem(DEV_KEY) === '1'
+  } catch {
+    return new URLSearchParams(location.search).has('dev')
+  }
+})()
+
+export const devModeOn = () => devOn
+
+export function setDevMode(on: boolean) {
+  devOn = on
+  try {
+    if (on) localStorage.setItem(DEV_KEY, '1')
+    else localStorage.removeItem(DEV_KEY)
+  } catch {
+    // geen opslag (privévenster): geldt dan alleen voor deze sessie
+  }
+  if (!on) setFakePosition(null)
+}
+
 export function devModeAllowed(timeScale: number): boolean {
-  return new URLSearchParams(location.search).has('dev') && (timeScale !== 1 || import.meta.env.DEV)
+  return devOn && (timeScale !== 1 || import.meta.env.DEV)
 }
 
 export function setFakePosition(pos: Position | null) {

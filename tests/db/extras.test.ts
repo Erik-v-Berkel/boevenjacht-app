@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { distance } from '@turf/distance'
 import { point } from '@turf/helpers'
-import { admin, AT, createGame, eventTypes, gameRow, newPhone, rpc, startedGame, submit, teamsOf } from './helpers'
+import { admin, AT, createGame, eventTypes, gameRow, joinedPhone, newPhone, rpc, startedGame, submit, teamsOf } from './helpers'
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
 const inMin = (min: number) => new Date(Date.now() + min * 60_000).toISOString()
@@ -193,5 +193,28 @@ describe('tekstreacties', () => {
     expect(data).toEqual([{ body: 'We komen eraan!' }])
     const { data: buiten } = await (await newPhone()).from('comments').select('body').eq('game_id', game_id)
     expect(buiten).toEqual([])
+  })
+})
+
+describe('Polizei-teams in de lobby', () => {
+  it('toevoegen en verwijderen, maar niet als er iemand in zit of het spel loopt', async () => {
+    const { game_id, join_code } = await createGame()
+    const p = await joinedPhone(join_code, 'Anna')
+    await rpc(p.phone, 'set_police_teams', { p_game_id: game_id, p_count: 5 })
+    expect((await teamsOf(game_id)).map((t) => t.name)).toEqual(['Boeven', 'Polizei A', 'Polizei B', 'Polizei C', 'Polizei D', 'Polizei E'])
+    expect((await gameRow(game_id)).settings.police_teams).toBe(5)
+
+    const teams = await teamsOf(game_id)
+    await rpc(p.phone, 'choose_team', { p_game_id: game_id, p_team_id: teams[4].id }) // Polizei D
+    await expect(rpc(p.phone, 'set_police_teams', { p_game_id: game_id, p_count: 2 })).rejects.toThrow('Polizei D')
+    await rpc(p.phone, 'set_police_teams', { p_game_id: game_id, p_count: 4 })
+    expect((await teamsOf(game_id)).map((t) => t.name)).toHaveLength(5)
+    await expect(rpc(p.phone, 'set_police_teams', { p_game_id: game_id, p_count: 0 })).rejects.toThrow('1 tot 5')
+    await expect(rpc(await newPhone(), 'set_police_teams', { p_game_id: game_id, p_count: 2 })).rejects.toThrow('niet mee')
+  })
+
+  it('niet meer na de start', async () => {
+    const { game_id, players } = await startedGame()
+    await expect(rpc(players[0].phone, 'set_police_teams', { p_game_id: game_id, p_count: 2 })).rejects.toThrow('al begonnen')
   })
 })

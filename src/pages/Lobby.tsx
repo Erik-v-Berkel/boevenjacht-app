@@ -27,6 +27,15 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
     else await navigator.clipboard.writeText(url)
   }
 
+  const policeCount = teams.filter((t) => t.role === 'police').length
+  const setPoliceTeams = async (n: number) => {
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.rpc('set_police_teams', { p_game_id: game.id, p_count: n })
+    setBusy(false)
+    if (error) setError(errorMessage(error))
+  }
+
   const start = async () => {
     setBusy(true)
     setError('')
@@ -105,6 +114,29 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
             </section>
           )
         })}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-4 py-3 ring-1 ring-slate-700">
+        <span className="text-slate-300">Polizei-teams</span>
+        <div className="flex items-center gap-3">
+          <button
+            aria-label="Polizei-team verwijderen"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || policeCount <= 1}
+            onClick={() => setPoliceTeams(policeCount - 1)}
+          >
+            −
+          </button>
+          <span className="w-4 text-center text-xl font-bold tabular-nums">{policeCount}</span>
+          <button
+            aria-label="Polizei-team toevoegen"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || policeCount >= 5}
+            onClick={() => setPoliceTeams(policeCount + 1)}
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {withoutTeam.length > 0 && (
