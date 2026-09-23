@@ -72,7 +72,7 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
 
       <dl className="grid grid-cols-2 gap-3 text-center">
         <Stat label="Totale aftrek" value={`${game.bonus_total_min} min`} />
-        <Stat label="Speelduur" value={formatDuration(duration)} mono />
+        <Stat label="Speelduur" value={formatDuration(duration * game.settings.time_scale)} mono />
         <Stat label="Kroegen" value={`🍺 ${bonus.filter((p) => p.type === 'beer').length}`} />
         <Stat label="Bezienswaardigheden" value={`🏛️ ${bonus.filter((p) => p.type === 'sight').length}`} />
       </dl>

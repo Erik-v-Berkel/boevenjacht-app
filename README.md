@@ -43,7 +43,7 @@ Elke push naar `main` deployt automatisch.
 ## Testen
 
 - **Testspel**: vink bij Nieuw spel "Testspel" aan. De tijd loopt dan 12× zo snel (hele spel ±16 min). Bonusminuten tellen gewoon als 10/15.
-- **Nep-GPS**: in een testspel `?dev=1` achter de URL zetten (bv. `https://…/spel/<id>?dev=1`). Op het camerascherm kies je een locatie uit een lijst, op de kaart tik je een punt aan.
+- **Nep-GPS**: in een testspel `?dev=1` achter de URL zetten (bv. `https://…/j/<code>?dev=1` of `https://…/spel/<id>?dev=1`); het blijft aan als je verder klikt. Op het camerascherm kies je een locatie uit een lijst, op de kaart tik je een punt aan.
 - **Automatische tests**:
 
   ```bash

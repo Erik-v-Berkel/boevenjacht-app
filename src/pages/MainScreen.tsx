@@ -145,9 +145,11 @@ function Countdown({ data, team, now }: { data: GameData; team: Team | null; now
   const { game } = data
   const policeStart = Date.parse(game.police_start_at!)
   const endsAt = Date.parse(game.ends_at!)
+  // In een testspel toont de grote klok speltijd (loopt time_scale× zo snel); de echte tijd staat eronder.
+  const scale = game.settings.time_scale
 
   if (now < policeStart) {
-    const left = formatDuration(policeStart - now)
+    const left = formatDuration((policeStart - now) * scale)
     return (
       <section className="rounded-2xl bg-slate-800 p-5 text-center ring-1 ring-slate-700">
         {team?.role === 'thieves' ? (
@@ -163,21 +165,33 @@ function Countdown({ data, team, now }: { data: GameData; team: Team | null; now
           </>
         )}
         <p className="mt-3 text-sm text-slate-400">
-          Zoekklok daarna: <span className="font-mono tabular-nums">{formatDuration(endsAt - policeStart)}</span>
+          Zoekklok daarna: <span className="font-mono tabular-nums">{formatDuration((endsAt - policeStart) * scale)}</span>
         </p>
+        <TestHint ms={policeStart - now} timeScale={scale} />
       </section>
     )
   }
 
   const left = endsAt - now
-  const urgent = left < gameMinutesMs(10, game.settings.time_scale)
+  const urgent = left < gameMinutesMs(10, scale)
   return (
     <section
       className={`rounded-2xl p-5 text-center ring-1 ${urgent ? 'animate-pulse bg-red-950 ring-red-700' : 'bg-slate-800 ring-slate-700'}`}
     >
       <p className="text-slate-300">{team?.role === 'thieves' ? 'Volhouden nog' : 'Zoektijd over'}</p>
-      <p className={`font-mono text-6xl font-black tabular-nums ${urgent ? 'text-red-400' : ''}`}>{formatDuration(left)}</p>
+      <p className={`font-mono text-6xl font-black tabular-nums ${urgent ? 'text-red-400' : ''}`}>{formatDuration(left * scale)}</p>
+      <TestHint ms={left} timeScale={scale} />
     </section>
+  )
+}
+
+/** In een testspel: hoeveel echte tijd er nog over is. */
+function TestHint({ ms, timeScale }: { ms: number; timeScale: number }) {
+  if (timeScale === 1) return null
+  return (
+    <p className="mt-2 text-xs text-amber-400">
+      Testspel, {timeScale}× sneller · echt nog: <span className="font-mono tabular-nums">{formatDuration(ms)}</span>
+    </p>
   )
 }
 

@@ -102,7 +102,7 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
   if (step.name === 'sent') return <UploadStatus item={sentItem} onBack={() => setStep({ name: 'choose' })} />
 
   // Keuzescherm met uitleg waarom iets (nog) niet kan
-  const blocked = cooldownLeft > 0 ? `Wachttijd: nog ${formatDuration(cooldownLeft)}` : gpsProblem(geo) ?? (outside ? 'Je bent buiten het speelveld' : null)
+  const blocked = cooldownLeft > 0 ? `Wachttijd: nog ${formatDuration(cooldownLeft * s.time_scale)}` : gpsProblem(geo) ?? (outside ? 'Je bent buiten het speelveld' : null)
   const sightProblem =
     sightCheck?.kind === 'used'
       ? `${sightCheck.sight.name} is al gebruikt`

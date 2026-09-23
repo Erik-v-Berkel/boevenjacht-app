@@ -34,7 +34,7 @@ export default function PoliceCamera({ data, now, geo }: { data: GameData; now: 
       <div className="mt-10 text-center">
         <p className="text-6xl">🔒</p>
         <p className="mt-3 text-lg">De camera is geblokkeerd tot jullie mogen vertrekken.</p>
-        <p className="font-mono text-4xl font-black tabular-nums">{formatDuration(policeStart - now)}</p>
+        <p className="font-mono text-4xl font-black tabular-nums">{formatDuration((policeStart - now) * data.game.settings.time_scale)}</p>
       </div>
     )
   }
