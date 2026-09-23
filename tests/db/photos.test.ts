@@ -72,7 +72,7 @@ describe('bezienswaardigheid', () => {
     const { game_id, players } = await startedGame()
     const boef = players[0].phone
     expect((await submit(boef, game_id, { type: 'sight', at: AT.nergens })).reject_reason).toBe('Je bent niet bij een bezienswaardigheid')
-    expect((await submit(boef, game_id, { type: 'sight', at: AT.lambertus, accuracy: 70 })).reject_reason).toBe(
+    expect((await submit(boef, game_id, { type: 'sight', at: AT.lambertus, accuracy: 120 })).reject_reason).toBe(
       'GPS nog niet nauwkeurig genoeg, even wachten…',
     )
   })
