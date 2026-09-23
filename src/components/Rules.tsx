@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { devModeOn, setDevMode } from '../lib/useGeolocation'
 import { play, setSound, soundOn } from '../lib/sound'
+import { ThemeToggle } from './ThemeToggle'
 import type { GameSettings } from '../lib/types'
 
 /** Nep-GPS aan/uit in testspellen, ook in de app op het beginscherm (daar kun je geen ?dev=1 typen). */
@@ -48,6 +49,7 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
     <article className="flex flex-col gap-4 text-slate-200 [&_h2]:text-lg [&_h2]:font-bold [&_li]:ml-5 [&_li]:list-disc">
       <h1 className="text-2xl font-black">Spielregeln</h1>
       <SoundToggle />
+      <ThemeToggle />
       {s.time_scale !== 1 && (
         <>
           <p className="rounded-lg bg-amber-950 px-3 py-2 text-amber-200">Testmodus: de tijd loopt {s.time_scale}× zo snel.</p>

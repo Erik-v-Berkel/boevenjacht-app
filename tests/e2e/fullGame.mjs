@@ -32,6 +32,8 @@ const phone = async (geo) => {
     permissions: ['geolocation', 'camera'], geolocation: geo ?? UERIGE,
   })
   contexts.push(ctx)
+  // THEME=downton npm run test:e2e → alles in het Lords & Ladies-thema
+  if (process.env.THEME) await ctx.addInitScript((t) => localStorage.setItem('boevenjacht-theme', t), process.env.THEME)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.log('PAGEERROR', e.message, e.stack?.split('\n').slice(1, 4).join(' | ')))
   page.on('console', (m) => m.type() === 'error' && !/Failed to fetch|ERR_INTERNET_DISCONNECTED|WebSocket/.test(m.text()) && console.log('CONSOLE', m.text()))

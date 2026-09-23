@@ -13,7 +13,7 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Duits thema: dun zwart-rood-goud randje bovenaan elk scherm */
+/* Polizei-thema (standaard): dun zwart-rood-goud randje bovenaan elk scherm */
 body::before {
   content: '';
   position: fixed;
@@ -22,4 +22,66 @@ body::before {
   z-index: 2500;
   pointer-events: none;
   background: linear-gradient(#000 0 33.4%, #dd0000 33.4% 66.7%, #ffce00 66.7%);
+}
+
+/* ---------------------------------------------------------------------------
+   Thema "Lords & Ladies" (Downton): alleen de Tailwind-kleuren, lettertypes en hoeken opnieuw.
+   Teamkleuren komen uit de database en blijven gelijk.
+   --------------------------------------------------------------------------- */
+:root[data-theme='downton'] {
+  --color-slate-50: #f7f0e1;
+  --color-slate-100: #ece2cf; /* perkament */
+  --color-slate-200: #e0d3ba;
+  --color-slate-300: #cdbd9f;
+  --color-slate-400: #a8987c;
+  --color-slate-500: #7d6f5a;
+  --color-slate-600: #5a4a3a;
+  --color-slate-700: #5c4526; /* gouden randen, gedempt */
+  --color-slate-800: #1c1013; /* kaarten */
+  --color-slate-900: #1a1410; /* inkt */
+  --color-slate-950: #0f0a0b;
+  --color-yellow-300: #f0d88f;
+  --color-yellow-400: #e8c974; /* goud */
+  --color-yellow-500: #c9a24b;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --font-sans: 'Cormorant Garamond', Georgia, serif;
+}
+
+:root[data-theme='downton'] {
+  background: #1a1410;
+}
+
+:root[data-theme='downton'] body {
+  background: radial-gradient(ellipse 100% 100vh at 50% 0%, #10182b 0%, #2c0710 55%, #1a1410 100%) no-repeat #1a1410;
+  color: #ece2cf;
+  font-family: var(--font-sans);
+  font-size: 17px;
+}
+
+:root[data-theme='downton'] body::before {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c9a24b, #e8c974, #c9a24b, transparent);
+}
+
+:root[data-theme='downton'] :is(h1, h2, h3, .font-black, .font-bold) {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+:root[data-theme='downton'] h1,
+:root[data-theme='downton'] h2 {
+  color: #e8c974;
+}
+
+/* Kaarten krijgen een dunne gouden rand */
+:root[data-theme='downton'] :is(.bg-slate-800, .bg-slate-800\/60, .bg-slate-800\/70) {
+  box-shadow: inset 0 0 0 1px rgb(201 162 75 / 0.35);
+}
+
+/* Hoofdknoppen en meldingen: goud verloop, zoals de "Betreden"-knop */
+:root[data-theme='downton'] .bg-yellow-400 {
+  background-image: linear-gradient(#e8c974, #c9a24b);
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: 0.02em;
 }

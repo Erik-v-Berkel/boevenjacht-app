@@ -4,6 +4,7 @@ import { navigate } from '../lib/router'
 import { normalizeJoinCode } from '../lib/joinCode'
 import { Button, Screen, inputClass } from '../components/ui'
 import { InstallHint } from '../components/InstallHint'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 interface MyGame {
   game_id: string
@@ -67,6 +68,8 @@ export default function Home({ userId }: { userId: string }) {
       </form>
 
       <InstallHint />
+
+      <ThemeToggle />
 
       <a className="text-center text-sm text-slate-400 underline" href="/handleiding.html">
         📖 Handleiding
