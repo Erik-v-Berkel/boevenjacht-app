@@ -11,9 +11,10 @@ export function phaseAt(game: Pick<Game, 'status' | 'police_start_at' | 'ends_at
   return 'running'
 }
 
-/** Heeft de server een tick nodig? (lokale fase loopt voor op de opgeslagen status) */
-export function needsTick(game: Pick<Game, 'status' | 'police_start_at' | 'ends_at'>, now: number): boolean {
-  return phaseAt(game, now) !== game.status
+/** Heeft de server een tick nodig? (lokale fase loopt voor op de opgeslagen status, of er is een ping gepland) */
+export function needsTick(game: Pick<Game, 'status' | 'police_start_at' | 'ends_at' | 'next_ping_at'>, now: number): boolean {
+  if (phaseAt(game, now) !== game.status) return true
+  return game.status === 'running' && game.next_ping_at !== null && now >= Date.parse(game.next_ping_at)
 }
 
 /** 5025 ms → "0:06"; 3 uur → "3:00:00". Rondt naar boven af, zodat 0 pas op het eind verschijnt. */

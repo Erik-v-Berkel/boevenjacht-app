@@ -33,7 +33,7 @@ const phone = async (geo) => {
   })
   contexts.push(ctx)
   const page = await ctx.newPage()
-  page.on('pageerror', (e) => console.log('PAGEERROR', e.message))
+  page.on('pageerror', (e) => console.log('PAGEERROR', e.message, e.stack?.split('\n').slice(1, 4).join(' | ')))
   page.on('console', (m) => m.type() === 'error' && !/Failed to fetch|ERR_INTERNET_DISCONNECTED|WebSocket/.test(m.text()) && console.log('CONSOLE', m.text()))
   return page
 }
@@ -61,7 +61,7 @@ await erik.click('text=Zelf meedoen')
 const boef2 = await phone(FAR)
 const [anna, bram, cees] = [await phone(), await phone(), await phone()]
 const all = [erik, boef2, anna, bram, cees]
-const who = [['Erik', 'Boeven'], ['Dirk', 'Boeven'], ['Anna', 'Politie A'], ['Bram', 'Politie B'], ['Cees', 'Politie C']]
+const who = [['Erik', 'Boeven'], ['Dirk', 'Boeven'], ['Anna', 'Polizei A'], ['Bram', 'Polizei B'], ['Cees', 'Polizei C']]
 for (const [i, p] of all.entries()) {
   if (i > 0) await p.goto(`${BASE}/j/${code}`)
   await p.fill('#name', who[i][0])
@@ -115,17 +115,17 @@ for (const p of [anna, bram]) {
   await p.click('nav >> text=Camera')
   await p.click('text=Vangstfoto maken', { timeout: 15000 })
   await photo(p)
-  await p.click('text=Boeven gevangen!')
+  await p.click('text=Halt, Polizei! Gevangen!')
   await p.waitForSelector('text=Tik nogmaals om te bevestigen')
 }
 await shot(anna, 'f4-bevestigen')
 await anna.click('text=Tik nogmaals om te bevestigen')
 await bram.click('text=Tik nogmaals om te bevestigen')
 
-await erik.waitForSelector('text=Jullie zijn gevangen door Politie A om', { timeout: 20000 })
+await erik.waitForSelector('text=Jullie zijn gevangen door Polizei A om', { timeout: 20000 })
 await anna.waitForSelector('text=Jullie hebben gewonnen!', { timeout: 20000 })
-await bram.waitForSelector('text=Te laat, Politie A was je voor.', { timeout: 30000 })
-await cees.waitForSelector('text=Gevangen door Politie A!', { timeout: 20000 })
+await bram.waitForSelector('text=Te laat, Polizei A was je voor.', { timeout: 30000 })
+await cees.waitForSelector('text=Gevangen door Polizei A!', { timeout: 20000 })
 await erik.waitForTimeout(2500)
 await shot(erik, 'f5-einde-boef')
 await shot(bram, 'f6-einde-te-laat')

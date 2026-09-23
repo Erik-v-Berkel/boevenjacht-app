@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import type { Polygon } from 'geojson'
 import type { Position } from '../lib/geo'
-import type { Photo, Sight } from '../lib/types'
+import type { Photo, Ping, Sight } from '../lib/types'
 import { timeAgo } from '../lib/clock'
 
 export interface Teammate {
@@ -20,6 +20,7 @@ export interface GameMapProps {
   labels: Record<string, string> // photo.id → "Burgplatz" / kroegnaam
   me?: Position | null
   teammates?: Teammate[]
+  pings?: Ping[] // oudste eerst; alleen de laatste paar worden getoond
   route?: boolean // lijn tussen de foto's (eindscherm)
   now: number
   onTap?: (lat: number, lng: number) => void // nep-GPS in testmodus
@@ -35,7 +36,7 @@ const USED = '#64748b'
 export function GameMap(props: GameMapProps) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
-  const layers = useRef<Record<'area' | 'sights' | 'photos' | 'me' | 'team', L.LayerGroup> | null>(null)
+  const layers = useRef<Record<'area' | 'sights' | 'pings' | 'photos' | 'me' | 'team', L.LayerGroup> | null>(null)
   const latest = useRef(props)
   latest.current = props
 
@@ -50,6 +51,7 @@ export function GameMap(props: GameMapProps) {
     layers.current = {
       area: L.layerGroup().addTo(m),
       sights: L.layerGroup().addTo(m),
+      pings: L.layerGroup().addTo(m),
       photos: L.layerGroup().addTo(m),
       team: L.layerGroup().addTo(m),
       me: L.layerGroup().addTo(m),
@@ -147,6 +149,25 @@ export function GameMap(props: GameMapProps) {
   }, [props.me?.lat, props.me?.lng, props.me?.accuracy])
 
   // Teamgenoten (alleen boeven onderling)
+  useEffect(() => {
+    const g = layers.current!.pings
+    g.clearLayers()
+    const located = (props.pings ?? []).filter((p) => p.lat !== null && p.lng !== null).slice(-3)
+    located.forEach((p, i) => {
+      const newest = i === located.length - 1
+      L.circle([p.lat!, p.lng!], {
+        radius: p.radius_m,
+        color: '#f97316',
+        weight: newest ? 3 : 1,
+        dashArray: '6 6',
+        fillColor: '#f97316',
+        fillOpacity: newest ? 0.25 : 0.08,
+      })
+        .bindTooltip(() => `📡 ${p.kind === 'radar' ? 'Radar' : 'Ping'} · ${timeAgo(p.created_at, latest.current.now)}`, { direction: 'center' })
+        .addTo(g)
+    })
+  }, [props.pings])
+
   useEffect(() => {
     const g = layers.current!.team
     g.clearLayers()

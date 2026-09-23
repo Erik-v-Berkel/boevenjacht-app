@@ -10,10 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
+      workbox: { importScripts: ['push-sw.js'] },
       manifest: {
         name: 'Boevenjacht Düsseldorf',
         short_name: 'Boevenjacht',
-        description: 'Boeven en politie in de binnenstad van Düsseldorf',
+        description: 'Boeven tegen de Polizei in de binnenstad van Düsseldorf',
         lang: 'nl',
         start_url: '/',
         display: 'standalone',

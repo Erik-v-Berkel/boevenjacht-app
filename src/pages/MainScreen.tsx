@@ -8,6 +8,8 @@ import { useServerClock, useServerNow } from '../lib/useServerClock'
 import { devModeAllowed, setFakePosition, useGeolocation } from '../lib/useGeolocation'
 import { useWakeLock } from '../lib/useWakeLock'
 import { useTeamLocations } from '../lib/useTeamLocations'
+import { useOnline } from '../lib/useOnline'
+import { usePush } from '../lib/push'
 import type { GameData } from '../lib/useGameData'
 import type { Photo, Player, Team } from '../lib/types'
 import { Rules } from '../components/Rules'
@@ -38,6 +40,7 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
   const outside = geo.kind === 'ok' && !insidePlayArea(game.settings.play_area, geo.pos.lat, geo.pos.lng)
   const team = useTeamLocations(data, me, myTeam, geo, phase !== 'ended')
   const toasts = useEventToasts(data)
+  const online = useOnline(game.id, me.id)
   useWakeLock(phase !== 'ended')
 
   // Zonder spelleider: elke telefoon vraagt de server om bij te werken zodra de klok een grens passeert.
@@ -60,8 +63,10 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
         {tab === 'klok' && (
           <>
             <Countdown data={data} team={myTeam} now={now} />
+            <PushToggle gameId={game.id} />
             <BonusBar data={data} />
-            <Feed data={data} />
+            <TeamStatus data={data} online={online} />
+            <Feed data={data} me={me} />
           </>
         )}
         {tab === 'kaart' && (
@@ -72,6 +77,7 @@ export default function MainScreen({ data, me }: { data: GameData; me: Player })
             outside={outside}
             teammates={team.teammates}
             banner={team.warning}
+            team={myTeam}
             onTap={dev ? (lat, lng) => setFakePosition({ lat, lng, accuracy: 10 }) : undefined}
           />
         )}
@@ -117,7 +123,7 @@ function Banner({ color, children }: { color: 'amber' | 'red'; children: React.R
   return <p className={`rounded-lg px-3 py-2 font-semibold ring-1 ${cls}`}>{children}</p>
 }
 
-/** Melding + trillen bij nieuwe gebeurtenissen (foto's, politie vrij, vangst). */
+/** Melding + trillen bij nieuwe gebeurtenissen (foto's, Polizei vrij, pings, vangst). */
 function useEventToasts(data: GameData) {
   const [toasts, setToasts] = useState<{ id: number; icon: string; text: string }[]>([])
   const lastSeen = useRef<number | null>(null)
@@ -156,11 +162,11 @@ function Countdown({ data, team, now }: { data: GameData; team: Team | null; now
           <>
             <p className="text-slate-300">🦹 Voorsprong — wegwezen!</p>
             <p className="font-mono text-6xl font-black tabular-nums">{left}</p>
-            <p className="mt-1 text-sm text-slate-400">Daarna gaat de politie zoeken.</p>
+            <p className="mt-1 text-sm text-slate-400">Daarna gaat de Polizei zoeken.</p>
           </>
         ) : (
           <>
-            <p className="text-slate-300">🚓 {team ? 'Jullie mogen vertrekken over' : 'De politie vertrekt over'}</p>
+            <p className="text-slate-300">🚓 {team ? 'Jullie mogen vertrekken over' : 'De Polizei vertrekt over'}</p>
             <p className="font-mono text-6xl font-black tabular-nums">{left}</p>
           </>
         )}
@@ -181,6 +187,12 @@ function Countdown({ data, team, now }: { data: GameData; team: Team | null; now
       <p className="text-slate-300">{team?.role === 'thieves' ? 'Volhouden nog' : 'Zoektijd over'}</p>
       <p className={`font-mono text-6xl font-black tabular-nums ${urgent ? 'text-red-400' : ''}`}>{formatDuration(left * scale)}</p>
       <TestHint ms={left} timeScale={scale} />
+      {game.next_ping_at && Date.parse(game.next_ping_at) < endsAt && (
+        <p className="mt-3 text-sm text-orange-300">
+          📡 {team?.role === 'thieves' ? 'Automatische ping (tenzij jullie een foto maken) over' : 'Volgende ping over'}{' '}
+          <span className="font-mono tabular-nums">{formatDuration((Date.parse(game.next_ping_at) - now) * scale)}</span>
+        </p>
+      )}
     </section>
   )
 }
@@ -210,8 +222,8 @@ function BonusBar({ data }: { data: GameData }) {
   )
 }
 
-function Feed({ data }: { data: GameData }) {
-  const { events, players, teams, photos } = data
+function Feed({ data, me }: { data: GameData; me: Player }) {
+  const { events, players, teams, photos, reactions } = data
   const photoById = new Map(photos.map((p) => [p.id, p]))
   const urls = usePhotoUrls(photos.filter((p) => p.status === 'accepted').map((p) => p.storage_path))
   const [open, setOpen] = useState<Photo | null>(null)
@@ -228,9 +240,66 @@ function Feed({ data }: { data: GameData }) {
           photo={typeof e.payload.photo_id === 'string' ? photoById.get(e.payload.photo_id) : undefined}
           urls={urls}
           onOpen={setOpen}
+          reactions={reactions}
+          comments={data.comments}
+          meId={me.id}
         />
       ))}
       {open && urls[open.storage_path] && <Lightbox url={urls[open.storage_path]} onClose={() => setOpen(null)} />}
     </section>
+  )
+}
+
+/** Per team: wie heeft de app nu open? Handig om te zien of iemand een lege batterij heeft. */
+function TeamStatus({ data, online }: { data: GameData; online: Set<string> }) {
+  return (
+    <section className="rounded-2xl bg-slate-800/60 p-3 ring-1 ring-slate-800">
+      <h2 className="mb-2 text-sm font-semibold text-slate-400 uppercase">Wie is er online?</h2>
+      <ul className="flex flex-col gap-1 text-sm">
+        {data.teams.map((t) => {
+          const members = data.players.filter((p) => p.team_id === t.id)
+          const on = members.filter((p) => online.has(p.id)).length
+          return (
+            <li key={t.id} className="flex items-baseline gap-2">
+              <span className="w-24 shrink-0 font-semibold" style={{ color: t.color }}>
+                {t.name}
+              </span>
+              <span className="text-slate-400 tabular-nums">
+                {on}/{members.length}
+              </span>
+              <span className="truncate">
+                {members.map((p) => (
+                  <span key={p.id} className={online.has(p.id) ? 'text-slate-100' : 'text-slate-500 line-through'}>
+                    {online.has(p.id) ? '🟢' : '⚪'} {p.name}{' '}
+                  </span>
+                ))}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+function PushToggle({ gameId }: { gameId: string }) {
+  const { state, enable } = usePush(gameId)
+  const [error, setError] = useState('')
+  if (state === 'on' || state === 'unsupported') return null
+  if (state === 'needs-install') {
+    return <p className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">🔔 Zet de app op je beginscherm om meldingen te krijgen als je telefoon op zak zit.</p>
+  }
+  if (state === 'denied') {
+    return <p className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-400">🔕 Meldingen zijn geblokkeerd. Zet ze aan in de instellingen van je browser.</p>
+  }
+  return (
+    <button
+      className="rounded-xl bg-slate-800 px-4 py-3 text-left font-semibold ring-1 ring-yellow-400/60"
+      onClick={() => enable().catch((e) => setError(String(e?.message ?? e)))}
+    >
+      🔔 Meldingen aanzetten
+      <span className="block text-sm font-normal text-slate-400">Ook als je telefoon op zak zit: foto's, pings en de vangst.</span>
+      {error && <span className="block text-sm font-normal text-red-300">{error}</span>}
+    </button>
   )
 }

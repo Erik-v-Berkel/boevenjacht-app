@@ -28,9 +28,9 @@ describe('create_game', () => {
     const teams = await teamsOf(game_id)
     expect(teams.map((t) => [t.name, t.role])).toEqual([
       ['Boeven', 'thieves'],
-      ['Politie A', 'police'],
-      ['Politie B', 'police'],
-      ['Politie C', 'police'],
+      ['Polizei A', 'police'],
+      ['Polizei B', 'police'],
+      ['Polizei C', 'police'],
     ])
   })
 

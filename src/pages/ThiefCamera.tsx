@@ -141,7 +141,7 @@ export default function ThiefCamera({ data, now, geo }: { data: GameData; now: n
         </span>
       </button>
 
-      <p className="text-sm text-slate-400">⚠️ Elke foto laat direct je locatie zien aan de politie.</p>
+      <p className="text-sm text-slate-400">⚠️ Elke foto laat direct je locatie zien aan de Polizei.</p>
     </div>
   )
 }

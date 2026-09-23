@@ -8,6 +8,7 @@ import type { Player, Team } from './types'
 import type { Teammate } from '../components/GameMap'
 
 const SEND_EVERY_MS = 15_000
+const POLICE_SEND_EVERY_MS = 30_000 // alleen voor de replay na afloop
 const FRESH_MS = 3 * 60_000 // oudere locaties tellen niet (telefoon op zak/uit)
 export const TOGETHER_M = 100
 
@@ -29,11 +30,12 @@ export function togetherWarning(me: { lat: number; lng: number } | null, mates: 
 }
 
 /**
- * Alleen voor boeven: stuurt de eigen locatie elke 15 s en haalt die van teamgenoten op.
- * De politie stuurt niets en krijgt niets (RLS).
+ * Boeven: sturen de eigen locatie elke 15 s en halen die van teamgenoten op.
+ * Polizei: stuurt elke 30 s een locatie voor de replay na afloop, maar krijgt niets terug (RLS).
  */
 export function useTeamLocations(data: GameData, me: Player, team: Team | null, geo: GeoState, active: boolean) {
   const isThief = team?.role === 'thieves' && active
+  const isPolice = team?.role === 'police' && active
   const [rows, setRows] = useState<Row[]>([])
   const pos = geo.kind === 'ok' ? geo.pos : null
   const latestPos = useRef(pos)
@@ -54,6 +56,21 @@ export function useTeamLocations(data: GameData, me: Player, team: Team | null, 
     const id = setInterval(() => void tick(), SEND_EVERY_MS)
     return () => clearInterval(id)
   }, [isThief, data.game.id])
+
+  useEffect(() => {
+    if (!isPolice) return
+    const gameId = data.game.id
+    const send = () => {
+      const p = latestPos.current
+      if (p) void supabase.rpc('update_location', { p_game_id: gameId, p_lat: p.lat, p_lng: p.lng, p_accuracy_m: p.accuracy })
+    }
+    const first = setTimeout(send, 2000) // wacht op de eerste GPS-positie
+    const id = setInterval(send, POLICE_SEND_EVERY_MS)
+    return () => {
+      clearTimeout(first)
+      clearInterval(id)
+    }
+  }, [isPolice, data.game.id])
 
   // Memo: MainScreen rendert elke 250 ms; een nieuwe array zou de kaart steeds opnieuw laten tekenen.
   const teammates = useMemo<Teammate[]>(() => {

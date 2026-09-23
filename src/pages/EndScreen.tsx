@@ -7,6 +7,7 @@ import type { GameData } from '../lib/useGameData'
 import type { Photo, Player } from '../lib/types'
 import { FeedItem, Lightbox } from '../components/FeedItem'
 import { GameMap } from '../components/GameMap'
+import { ReplayMap } from '../components/ReplayMap'
 import { Button } from '../components/ui'
 
 export default function EndScreen({ data, me, now }: { data: GameData; me: Player; now: number }) {
@@ -47,10 +48,10 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
 
   const title =
     winner === 'thieves'
-      ? 'Boeven ontsnapt!'
+      ? 'Entkommen! Boeven ontsnapt!'
       : myTeam?.role === 'thieves'
-        ? `Jullie zijn gevangen door ${winningTeam?.name ?? 'de politie'} om ${clockTime(game.ended_at!)}.`
-        : `Gevangen door ${winningTeam?.name ?? 'de politie'}!`
+        ? `Festgenommen! Jullie zijn gevangen door ${winningTeam?.name ?? 'de Polizei'} om ${clockTime(game.ended_at!)}.`
+        : `Festgenommen! Gevangen door ${winningTeam?.name ?? 'de Polizei'}!`
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
@@ -78,17 +79,30 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
       </dl>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-slate-400 uppercase">Route van de boeven</h2>
-        <GameMap
-          className="h-[55vh] w-full overflow-hidden rounded-2xl"
-          playArea={game.settings.play_area}
-          sights={sights}
-          usedSightIds={usedSightIds}
+        <h2 className="mb-2 text-sm font-semibold text-slate-400 uppercase">Replay: wie liep waar?</h2>
+        <ReplayMap
+          gameId={game.id}
+          start={Date.parse(game.started_at!)}
+          end={endedAt}
+          timeScale={game.settings.time_scale}
+          teams={teams}
+          players={players}
           photos={route}
-          photoUrls={urls}
-          labels={labels}
-          route
-          now={now}
+          pings={data.pings}
+          playArea={game.settings.play_area}
+          fallback={
+            <GameMap
+              className="h-[55vh] w-full overflow-hidden rounded-2xl"
+              playArea={game.settings.play_area}
+              sights={sights}
+              usedSightIds={usedSightIds}
+              photos={route}
+              photoUrls={urls}
+              labels={labels}
+              route
+              now={now}
+            />
+          }
         />
       </section>
 
@@ -120,6 +134,9 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
             photo={typeof e.payload.photo_id === 'string' && e.type !== 'game_ended' ? photos.find((p) => p.id === e.payload.photo_id) : undefined}
             urls={urls}
             onOpen={setOpen}
+            reactions={data.reactions}
+            comments={data.comments}
+            meId={me.id}
           />
         ))}
       </section>

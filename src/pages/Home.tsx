@@ -39,7 +39,7 @@ export default function Home({ userId }: { userId: string }) {
       <header className="pt-6 text-center">
         <img src="/icon.svg" alt="" className="mx-auto mb-3 h-20 w-20" />
         <h1 className="text-3xl font-black">Boevenjacht</h1>
-        <p className="text-slate-400">Düsseldorf</p>
+        <p className="text-slate-400">Boeven gegen Polizei · Düsseldorf</p>
       </header>
 
       {activeGame && (

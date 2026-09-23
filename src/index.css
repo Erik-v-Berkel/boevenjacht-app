@@ -12,3 +12,14 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
+
+/* Duits thema: dun zwart-rood-goud randje bovenaan elk scherm */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 6px;
+  z-index: 2500;
+  pointer-events: none;
+  background: linear-gradient(#000 0 33.4%, #dd0000 33.4% 66.7%, #ffce00 66.7%);
+}

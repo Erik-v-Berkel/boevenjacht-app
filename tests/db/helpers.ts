@@ -69,7 +69,7 @@ export async function joinedPhone(joinCode: string, name: string) {
   return { phone, ...res }
 }
 
-/** Spel met in elk team één speler. Geeft de telefoons per team terug (0 = Boeven, 1-3 = Politie A-C). */
+/** Spel met in elk team één speler. Geeft de telefoons per team terug (0 = Boeven, 1-3 = Polizei A-C). */
 export async function fullLobby(settings: Record<string, unknown> = {}) {
   const { game_id, join_code } = await createGame(settings)
   const teams = await teamsOf(game_id)

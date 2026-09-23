@@ -68,7 +68,7 @@ export default function PoliceCamera({ data, now, geo }: { data: GameData; now: 
           onClick={send}
           className={`rounded-2xl px-4 py-5 text-2xl font-black text-white transition ${armed ? 'animate-pulse bg-red-600' : 'bg-blue-600'}`}
         >
-          {armed ? 'Tik nogmaals om te bevestigen' : '🚨 Boeven gevangen!'}
+          {armed ? 'Tik nogmaals om te bevestigen' : '🚨 Halt, Polizei! Gevangen!'}
         </button>
         <Button variant="secondary" onClick={() => setStep({ name: 'camera' })}>
           Opnieuw
@@ -81,9 +81,9 @@ export default function PoliceCamera({ data, now, geo }: { data: GameData; now: 
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-black">Vangen</h1>
+      <h1 className="text-2xl font-black">Festnahme</h1>
       <p className="text-slate-300">
-        Heb je de boeven? Maak een foto waarop ze herkenbaar staan en druk op <b>"Boeven gevangen!"</b>. De eerste vangstfoto
+        Heb je de boeven? Maak een foto waarop ze herkenbaar staan en druk op <b>"Halt, Polizei! Gevangen!"</b>. De eerste vangstfoto
         die binnenkomt, wint.
       </p>
       <button onClick={() => setStep({ name: 'camera' })} className="rounded-2xl bg-blue-600 p-6 text-left text-white">

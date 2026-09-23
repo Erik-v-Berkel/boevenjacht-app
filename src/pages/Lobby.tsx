@@ -113,7 +113,7 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
 
       <section className="mt-2 flex flex-col gap-2">
         <HoldButton disabled={busy || !me.team_id || emptyTeams.length > 0} onHold={start}>
-          Start spel (3 sec. vasthouden)
+          Los geht's! Start spel (3 sec. vasthouden)
         </HoldButton>
         <p className="text-center text-sm text-slate-400">
           {!me.team_id

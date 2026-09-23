@@ -14,6 +14,13 @@ export interface GameSettings {
   max_players_per_team: number
   time_scale: number
   play_area?: Polygon
+  // Vanaf fase 8; oudere spellen missen ze (de server vult dan de standaardwaarden in)
+  idle_ping_min?: number
+  final_phase_min?: number
+  final_ping_min?: number
+  ping_radius_m?: number
+  radars_per_team?: number
+  police_teams?: number
 }
 
 export type SightGeometry = Point | LineString | Polygon
@@ -57,6 +64,7 @@ export interface Game {
   police_start_at: string | null
   ends_at: string | null
   ended_at: string | null
+  next_ping_at: string | null
   bonus_total_min: number
   winner: TeamRole | null
   winning_team_id: string | null
@@ -83,7 +91,41 @@ export interface Player {
   last_seen_at: string
 }
 
-export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended'
+export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended' | 'ping'
+
+export type PingKind = 'idle' | 'final' | 'radar'
+
+/** Vage cirkel rond de boeven. lat/lng is een verschoven middelpunt; null = geen signaal. */
+export interface Ping {
+  id: number
+  game_id: string
+  kind: PingKind
+  team_id: string | null
+  lat: number | null
+  lng: number | null
+  radius_m: number
+  age_s: number | null
+  created_at: string
+}
+
+export const REACTION_EMOJI = ['😂', '🔥', '🍺', '👮', '😱', '👏'] as const
+
+export interface Comment {
+  id: number
+  photo_id: string
+  player_id: string
+  game_id: string
+  body: string
+  created_at: string
+}
+
+export interface Reaction {
+  photo_id: string
+  player_id: string
+  game_id: string
+  emoji: string
+  active: boolean
+}
 
 export interface GameEvent {
   id: number

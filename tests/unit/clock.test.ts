@@ -6,6 +6,7 @@ const game = {
   status: 'headstart' as const,
   police_start_at: new Date(T0 + 15 * 60_000).toISOString(),
   ends_at: new Date(T0 + 195 * 60_000).toISOString(),
+  next_ping_at: null as string | null,
 }
 
 describe('phaseAt', () => {
@@ -26,6 +27,12 @@ describe('phaseAt', () => {
     expect(needsTick(game, T0 + 16 * 60_000)).toBe(true)
     expect(needsTick({ ...game, status: 'running' }, T0 + 16 * 60_000)).toBe(false)
     expect(needsTick({ ...game, status: 'running' }, T0 + 200 * 60_000)).toBe(true)
+  })
+
+  it('needsTick als er een ping gepland staat', () => {
+    const running = { ...game, status: 'running' as const, next_ping_at: new Date(T0 + 45 * 60_000).toISOString() }
+    expect(needsTick(running, T0 + 44 * 60_000)).toBe(false)
+    expect(needsTick(running, T0 + 45 * 60_000)).toBe(true)
   })
 })
 

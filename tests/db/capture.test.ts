@@ -24,7 +24,7 @@ describe('vangen', () => {
   it('een vangstfoto beëindigt het spel: politie wint, dit team is de winnaar', async () => {
     const { game_id, players, teams } = await runningGame()
     const res = await capture(players[2].phone, game_id)
-    expect(res).toMatchObject({ status: 'accepted', label: 'Politie B' })
+    expect(res).toMatchObject({ status: 'accepted', label: 'Polizei B' })
 
     const game = await gameRow(game_id)
     expect(game).toMatchObject({ status: 'ended', winner: 'police', winning_team_id: teams[2].id })

@@ -10,7 +10,7 @@ describe('start_game', () => {
     const b = await joinedPhone(join_code, 'B')
     await rpc(b.phone, 'choose_team', { p_game_id: game_id, p_team_id: policeA.id })
 
-    await expect(rpc(a.phone, 'start_game', { p_game_id: game_id })).rejects.toThrow('Nog geen spelers in: Politie B, Politie C')
+    await expect(rpc(a.phone, 'start_game', { p_game_id: game_id })).rejects.toThrow('Nog geen spelers in: Polizei B, Polizei C')
     expect((await gameRow(game_id)).status).toBe('lobby')
   })
 

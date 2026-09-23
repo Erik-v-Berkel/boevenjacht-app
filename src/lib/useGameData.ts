@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import type { Game, GameEvent, Photo, Player, Sight, Team } from './types'
+import type { Comment, Game, GameEvent, Photo, Ping, Player, Reaction, Sight, Team } from './types'
 
 export interface GameData {
   game: Game
@@ -9,6 +9,9 @@ export interface GameData {
   events: GameEvent[] // nieuwste eerst
   photos: Photo[] // geaccepteerde + je eigen afgewezen (RLS), oudste eerst
   sights: Sight[]
+  pings: Ping[]
+  reactions: Reaction[]
+  comments: Comment[]
 }
 
 type State =
@@ -22,15 +25,18 @@ export function useGameData(gameId: string) {
   const [state, setState] = useState<State>({ kind: 'loading' })
 
   const load = useCallback(async () => {
-    const [g, t, p, e, ph, s] = await Promise.all([
+    const [g, t, p, e, ph, s, pi, r, c] = await Promise.all([
       supabase.from('games').select('*').eq('id', gameId).maybeSingle(),
       supabase.from('teams').select('*').eq('game_id', gameId).order('sort'),
       supabase.from('players').select('*').eq('game_id', gameId).order('joined_at'),
       supabase.from('events').select('*').eq('game_id', gameId).order('id', { ascending: false }),
       supabase.from('photos').select('*').eq('game_id', gameId).order('created_at'),
       supabase.from('sights').select('*').eq('game_id', gameId).order('sort'),
+      supabase.from('pings').select('*').eq('game_id', gameId).order('id'),
+      supabase.from('reactions').select('*').eq('game_id', gameId).eq('active', true),
+      supabase.from('comments').select('*').eq('game_id', gameId).order('id'),
     ])
-    const error = g.error ?? t.error ?? p.error ?? e.error ?? ph.error ?? s.error
+    const error = g.error ?? t.error ?? p.error ?? e.error ?? ph.error ?? s.error ?? pi.error ?? r.error ?? c.error
     if (error) {
       setState((s) => (s.kind === 'ready' ? s : { kind: 'error', message: error.message }))
       return
@@ -48,6 +54,9 @@ export function useGameData(gameId: string) {
         events: e.data ?? [],
         photos: ph.data ?? [],
         sights: s.data ?? [],
+        pings: pi.data ?? [],
+        reactions: r.data ?? [],
+        comments: c.data ?? [],
       },
     })
   }, [gameId])
@@ -63,6 +72,9 @@ export function useGameData(gameId: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: byGame }, reload)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: byGame }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'photos', filter: byGame }, reload)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pings', filter: byGame }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions', filter: byGame }, reload)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: byGame }, reload)
       .subscribe((status) => {
         // Na een herverbinding kunnen we wijzigingen gemist hebben.
         if (status === 'SUBSCRIBED') reload()

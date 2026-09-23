@@ -1,6 +1,6 @@
 # Boevenjacht Düsseldorf
 
-PWA voor verstoppertje in de binnenstad van Düsseldorf: 1 boeventeam en 3 politieteams. Specificatie: [PLAN.md](PLAN.md).
+PWA voor verstoppertje in de binnenstad van Düsseldorf: 1 boeventeam en 1–5 Polizei-teams (standaard 3). Specificatie: [PLAN.md](PLAN.md).
 
 React + TypeScript + Vite + Tailwind · Supabase (Postgres/PostGIS, Realtime, Storage) · Leaflet + Turf.js · gehost op Vercel.
 
@@ -16,6 +16,7 @@ Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spe
    3. `20260924000001_bonus_photos.sql`
    4. `20260925000001_capture.sql`
    5. `20260926000001_team_locations.sql`
+   6. `20260927000001_extras.sql` (pings, radar, emoji- en tekstreacties, replay, pushmeldingen, 1–5 Polizei-teams)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
@@ -31,14 +32,48 @@ Add New → Project → importeer de GitHub-repo (framework Vite wordt herkend).
 
 - `VITE_SUPABASE_URL` — Supabase → Project Settings → API
 - `VITE_SUPABASE_ANON_KEY` — de anon key of de publishable key
+- `VITE_VAPID_PUBLIC_KEY` — voor pushmeldingen (zie 3). Zonder deze variabele verbergt de app de knop "Meldingen aanzetten".
 
-Elke push naar `main` deployt automatisch.
+Elke push naar `main` deployt automatisch. Na het wijzigen van een variabele: **Redeploy** (Vite bakt ze in bij het bouwen).
+
+### 3. Pushmeldingen (optioneel)
+
+Meldingen als de telefoon op zak zit: foto's, pings, radar en de vangst. Op de iPhone alleen als de app op het beginscherm staat.
+
+1. Sleutels maken (eenmalig, bewaar de uitvoer):
+
+   ```sh
+   npx web-push generate-vapid-keys
+   ```
+
+2. Kies zelf een lang willekeurig geheim, bijvoorbeeld de uitvoer van `node -e "console.log(crypto.randomUUID())"`.
+3. Edge Function uitrollen (`<ref>` = project-ref uit de Supabase-URL):
+
+   ```sh
+   npx supabase login
+   npx supabase link --project-ref <ref>
+   npx supabase secrets set VAPID_PUBLIC_KEY=<public key> VAPID_PRIVATE_KEY=<private key> VAPID_SUBJECT=mailto:<jouw e-mail> PUSH_SECRET=<geheim>
+   npx supabase functions deploy push --no-verify-jwt
+   ```
+
+4. **SQL Editor** — de database laten weten waar de functie staat:
+
+   ```sql
+   insert into private.app_secrets (key, value) values
+     ('push_url', 'https://<ref>.supabase.co/functions/v1/push'),
+     ('push_secret', '<geheim>')
+   on conflict (key) do update set value = excluded.value;
+   ```
+
+5. **Vercel**: `VITE_VAPID_PUBLIC_KEY=<public key>` toevoegen en redeployen.
+
+Werkt het niet? Supabase → Edge Functions → push → Logs, en in SQL: `select status_code, content from net._http_response order by id desc limit 5;`.
 
 ## Spel spelen
 
 1. **De dag ervoor**: open de app, onderaan **Nieuw spel aanmaken**, vul de beheerderscode in. Deel de link in de groepsapp.
 2. Iedereen opent de link, zet de app op het beginscherm, vult een naam in en kiest een team (max. 3).
-3. Als alle 4 teams iemand hebben: **Start spel** 3 seconden ingedrukt houden.
+3. Als alle teams iemand hebben: **Start spel** 3 seconden ingedrukt houden.
 
 ## Testen
 
@@ -96,7 +131,7 @@ Er is geen spelleider in de app. Als het echt misgaat:
 select id, join_code, status, ends_at, bonus_total_min, winner from games order by created_at desc;
 
 -- Speler in een ander team zetten (ook na de start)
-update players set team_id = (select id from teams where game_id = '<game-id>' and name = 'Politie B')
+update players set team_id = (select id from teams where game_id = '<game-id>' and name = 'Polizei B')
 where game_id = '<game-id>' and name = '<naam>';
 
 -- Per ongeluk gestart: terug naar de lobby
@@ -140,4 +175,4 @@ where g.id = '<game-id>';
 
 ## Privacy
 
-Foto's staan in een privé Storage-bucket; alleen deelnemers van het spel kunnen ze zien (getekende URL's). De politie ziet nooit live locaties van de boeven: die staan in een aparte tabel die alleen boeven onderling kunnen lezen.
+Foto's staan in een privé Storage-bucket; alleen deelnemers van het spel kunnen ze zien (getekende URL's). De Polizei ziet nooit live locaties van de boeven: die staan in een aparte tabel die alleen boeven onderling kunnen lezen. Pings tonen alleen een verschoven cirkel. De routes van iedereen (voor de replay) zijn pas na afloop zichtbaar.
