@@ -68,6 +68,10 @@ export default function Home({ userId }: { userId: string }) {
 
       <InstallHint />
 
+      <a className="text-center text-sm text-slate-400 underline" href="/handleiding.html">
+        📖 Handleiding
+      </a>
+
       <button className="mt-auto text-sm text-slate-500 underline" onClick={() => navigate('/nieuw')}>
         Nieuw spel aanmaken
       </button>
