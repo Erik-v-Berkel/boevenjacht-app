@@ -9,3 +9,6 @@ supabase/.temp
 supabase/.branches
 .tokenade
 test-results
+
+# tokenade — legacy per-project embedding model cache (now global)
+.fastembed_cache/
