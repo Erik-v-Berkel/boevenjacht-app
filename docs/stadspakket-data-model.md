@@ -35,6 +35,31 @@ Bezienswaardigheden én kroegen in één tabel (`kind` onderscheidt ze), met NL/
 Utrecht: 10 bezienswaardigheden (thema Politie/Proost). Kroegen krijgen `is_partner_pub`
 zodra ze benaderd/bevestigd zijn (sales, vanaf week 3); tot die tijd `false`.
 
+## Producten, prijzen en boekingen (migratie: `supabase/migrations/0002_products_and_bookings.sql`)
+
+### `products`
+Eén rij per pakket: `go` (€15pp), `business_self` (€29pp), `business_host` (€39pp, `requires_host`).
+Prijzen komen uit `boevenjacht-kennis` → `references/prijzen.md`, excl. btw (btw-tarief ligt nog
+niet vast bij de Belastingdienst — de UI toont daarom nooit een bedrag incl. btw).
+`business_host` staat bij lancering op `active = false`: aanbieden is een open vraag aan Erik
+(bevestiging dat er een host beschikbaar is, zie prijzen.md).
+
+### `bookings`
+Eén rij per checkout-aanvraag: stad, product, aantal deelnemers, contactgegevens, status
+(`pending` → `confirmed`/`cancelled`) en het door de server berekende totaalbedrag. Bevat
+persoonsgegevens (naam/e-mail) en is daarom nooit direct leesbaar via de anon-key.
+
+### RPC's
+- `submit_booking(...)`: enige schrijfpad voor boekingen. Valideert stad/product/aantal
+  deelnemers en berekent de definitieve prijs zelf — de client stuurt nooit een prijs mee.
+  Gebruikt `pg_advisory_xact_lock` om het lanceeraanbod (eerste 10 groepen, 25% korting)
+  race-condition-vrij te tellen, analoog aan de row-lock voor spelregels (AGENTS.md regel 3).
+- `launch_offer_slots_remaining()`: publiek, alleen-lezen tellertje voor de lanceerbanner in de
+  UI ("nog X van de 10 plekken"), zonder boekingen of contactgegevens bloot te geven.
+
+Dit dekt alleen de checkout-aanvraag (COP-46). Betaling (Mollie) volgt in week 3–4; tot die tijd
+is een boeking een aanvraag die Erik/support handmatig bevestigt.
+
 ## Bewuste keuzes
 
 - **PostGIS** (`geography(Polygon/Point, 4326)`) voor `red_line`, `forbidden_zones` en
