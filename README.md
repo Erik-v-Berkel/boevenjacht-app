@@ -173,6 +173,19 @@ where g.id = '<game-id>';
 
 4. Eventueel de anonieme gebruikers: Authentication → Users → filter "Anonymous" → verwijderen.
 
+## Stadspakket-boeking en staff-login (COP-52)
+
+Naast het spel zelf staan er twee losse funnels in dezelfde app, die niet op de anonieme
+spelers-sessie hierboven wachten:
+
+- **`/boeken`** — checkout-wizard voor stadspakketten (stad → pakket → gegevens → bevestigd).
+  Data komt uit `cities`/`products`/`bookings` (migraties `20260930000002`–`20260930000004`);
+  prijsberekening incl. lanceeraanbod gebeurt server-side in `submit_booking()`.
+- **`/staff`** — inlogscherm voor staff (Supabase Auth, e-mail/wachtwoord). Geen
+  zelfregistratie: accounts worden buiten de app om aangemaakt (Supabase-dashboard →
+  Authentication → Add user). Elke ingelogde gebruiker is staff; het beheerscherm zelf
+  volgt in een later issue.
+
 ## Privacy
 
 Foto's staan in een privé Storage-bucket; alleen deelnemers van het spel kunnen ze zien (getekende URL's). De Polizei ziet nooit live locaties van de boeven: die staan in een aparte tabel die alleen boeven onderling kunnen lezen. Pings tonen alleen een verschoven cirkel. De routes van iedereen (voor de replay) zijn pas na afloop zichtbaar.
