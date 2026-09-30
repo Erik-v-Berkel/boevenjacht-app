@@ -193,8 +193,22 @@ spelers-sessie hierboven wachten:
   prijsberekening incl. lanceeraanbod gebeurt server-side in `submit_booking()`.
 - **`/staff`** — inlogscherm voor staff (Supabase Auth, e-mail/wachtwoord). Geen
   zelfregistratie: accounts worden buiten de app om aangemaakt (Supabase-dashboard →
-  Authentication → Add user). Elke ingelogde gebruiker is staff; het beheerscherm zelf
-  volgt in een later issue.
+  Authentication → Add user). Elke ingelogde gebruiker is staff en ziet na inloggen meteen
+  het beheerscherm.
+
+### Beheerscherm (COP-6)
+
+Na inloggen op `/staff` zie je de lijst van alle spellen (spelersaantal, geaccepteerde/
+afgekeurde foto's, eindtijd). Klik een spel aan voor:
+
+- **Eindtijd aanpassen** — alleen tijdens de voorsprong/zoektijd.
+- **Foto afkeuren** — alleen bonusfoto's (bier/bezienswaardigheid), geen vangstfoto's; een
+  toegekende bonus wordt teruggedraaid en de eindtijd schuift weer op.
+- **Spel stoppen** — eindigt het spel direct zonder winnaar (met bevestigingsstap).
+
+Alle drie gaan via auditbare RPC's (`admin_set_ends_at`, `admin_reject_photo`,
+`admin_stop_game`); geen SQL meer nodig. Elke actie komt in `admin_actions` te staan (wie,
+wat, wanneer, reden) en spelers zien 'm ook terug in hun eigen feed.
 
 ## Privacy
 
