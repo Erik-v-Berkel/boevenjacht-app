@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { fetchWithClockRetry } from './fetchRetry'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const rawUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+
+// createClient() throws synchronously on a schemeless host (e.g. "xyz.supabase.co"
+// zonder "https://"), wat de hele module — en dus de hele app — laat crashen bij
+// het opstarten. Vercel-envvars worden soms zonder protocol ingevuld, dus normaliseren.
+const url = rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl}` : rawUrl
 
 export const supabaseConfigured = Boolean(url && key)
 
