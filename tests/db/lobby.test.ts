@@ -45,9 +45,9 @@ describe('create_game', () => {
 describe('join_game', () => {
   it('weigert een onbekende code en een lege naam', async () => {
     const phone = await newPhone()
-    await expect(rpc(phone, 'join_game', { p_join_code: 'XXXX00', p_name: 'Erik' })).rejects.toThrow('Onbekende spelcode')
+    await expect(rpc(phone, 'join_game', { p_join_code: 'XXXX00', p_name: 'Erik', p_consent: true })).rejects.toThrow('Onbekende spelcode')
     const { join_code } = await createGame()
-    await expect(rpc(phone, 'join_game', { p_join_code: join_code, p_name: '   ' })).rejects.toThrow('Vul een naam in')
+    await expect(rpc(phone, 'join_game', { p_join_code: join_code, p_name: '   ', p_consent: true })).rejects.toThrow('Vul een naam in')
   })
 
   it('accepteert de code met kleine letters en spaties', async () => {

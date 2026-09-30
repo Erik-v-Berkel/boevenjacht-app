@@ -36,6 +36,8 @@ export function eventText(e: EventLike, players: Named[], teams: Named[]): { ico
       return { icon: '🏆', text: `Spel voorbij: gewonnen door ${team}!` }
     case 'checkpoint':
       return { icon: '📍', text: `${team} heeft een controlepost bij ${e.payload.label}: +1 radar!` }
+    case 'incident':
+      return { icon: '🆘', text: `Noodmelding${who ? ` van ${who}` : ''}! Bel 112 als je kunt helpen of zelf in gevaar bent.` }
     case 'ping': {
       const located = e.payload.located !== false
       if (e.payload.kind === 'radar') {

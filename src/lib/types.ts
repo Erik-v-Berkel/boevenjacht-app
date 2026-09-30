@@ -89,9 +89,31 @@ export interface Player {
   name: string
   joined_at: string
   last_seen_at: string
+  consent_accepted_at: string | null
+  consent_version: string | null
 }
 
-export type EventType = 'game_started' | 'police_released' | 'bonus' | 'bonus_cap_reached' | 'capture' | 'game_ended' | 'ping' | 'checkpoint'
+export interface Incident {
+  id: string
+  game_id: string
+  player_id: string
+  team_id: string | null
+  lat: number | null
+  lng: number | null
+  called_112: boolean
+  created_at: string
+}
+
+export type EventType =
+  | 'game_started'
+  | 'police_released'
+  | 'bonus'
+  | 'bonus_cap_reached'
+  | 'capture'
+  | 'game_ended'
+  | 'ping'
+  | 'checkpoint'
+  | 'incident'
 
 export type PingKind = 'idle' | 'final' | 'radar'
 

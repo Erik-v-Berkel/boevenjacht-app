@@ -59,12 +59,14 @@ export async function teamsOf(gameId: string) {
   return data as { id: string; name: string; role: string }[]
 }
 
-/** Nieuwe telefoon die met een naam aan het spel meedoet. */
+/** Nieuwe telefoon die met een naam aan het spel meedoet (met akkoord op de veiligheidsverklaring). */
 export async function joinedPhone(joinCode: string, name: string) {
   const phone = await newPhone()
   const res = await rpc<{ game_id: string; player_id: string }>(phone, 'join_game', {
     p_join_code: joinCode,
     p_name: name,
+    p_consent: true,
+    p_consent_version: 'v1',
   })
   return { phone, ...res }
 }
