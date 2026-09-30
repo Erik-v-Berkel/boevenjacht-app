@@ -2,11 +2,54 @@
 
 PWA voor verstoppertje in de binnenstad van Düsseldorf: 1 boeventeam en 1–5 Polizei-teams (standaard 3). Specificatie: [PLAN.md](PLAN.md).
 
-React + TypeScript + Vite + Tailwind · Supabase (Postgres/PostGIS, Realtime, Storage) · Leaflet + Turf.js · gehost op Vercel.
+React + TypeScript + Vite + Tailwind · Supabase (Postgres/PostGIS, Realtime, Storage) · Leaflet + Turf.js.
 
 Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spel). De app rekent alleen voor directe feedback.
 
-## Productie klaarzetten (eenmalig)
+Er zijn twee losse omgevingen die **niets** delen (geen Supabase-project, geen hosting, geen foutmeldingen):
+
+- **Weekendversie** — het eenmalige spelweekend-prototype. Supabase + Vercel, zie "Weekendversie klaarzetten" hieronder.
+- **Productieomgeving** — de doorlopende app voor betalende klanten (stadspakketten, staff, en toekomstige spelweekenden). Eigen Supabase-project (EU) + Cloudflare Pages + Sentry, zie "Productieomgeving klaarzetten".
+
+## Productieomgeving klaarzetten ([COP-2](/COP/issues/COP-2), eenmalig)
+
+**Dit deel doet Erik zelf** — het gaat om nieuwe accounts/projecten en (later) een betaalde dienst, dus dit hoort niet bij een agent-branch.
+
+### 1. Supabase (nieuw, EU-project)
+
+1. [supabase.com](https://supabase.com) → **New project**, region **EU** (bv. Frankfurt), een naam die duidelijk "productie" is (niet het bestaande weekend-project hergebruiken).
+2. Gratis tier is voldoende tot de eerste betalende klant; daarna upgraden naar Pro (~€25/maand) — akkoord vanuit deze issue, geen aparte betaalgoedkeuring nodig.
+3. **SQL Editor**: plak elk bestand uit `supabase/migrations/` **in volgorde** en voer het uit (zelfde stappen als bij de weekendversie hieronder — dit project begint leeg).
+4. **Authentication → Sign In / Providers**: **Allow anonymous sign-ins** aan (nodig voor het spel-onderdeel).
+5. Beheerderscode instellen (zelfde SQL-snippet als bij de weekendversie, stap 3 hieronder).
+
+### 2. Cloudflare Pages (hosting, los van Vercel)
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → deze GitHub-repo.
+2. Build-instellingen: framework **Vite**, build command `npm run build`, output directory `dist`.
+3. **Production branch**: `main`. Environment variables (Production):
+   - `VITE_SUPABASE_URL` — van het **nieuwe** productie-Supabase-project
+   - `VITE_SUPABASE_ANON_KEY` — idem
+   - `VITE_VAPID_PUBLIC_KEY` — apart gegenereerd voor productie (zie pushmeldingen-stappen hieronder)
+   - `VITE_SENTRY_DSN` — zie stap 3 hieronder
+   - `VITE_APP_ENV` = `production`
+4. `public/_redirects` (al in de repo: `/* /index.html 200`) laat Cloudflare Pages alle routes naar de SPA sturen.
+5. Elke push naar `main` deployt automatisch naar productie; andere branches krijgen een eigen preview-URL.
+
+### 3. Sentry (foutmeldingen binnen 5 minuten bij Erik)
+
+1. [sentry.io](https://sentry.io) → gratis account/project, platform **React**.
+2. **Settings → Alerts → Create Alert Rule**: "An event is seen" → **Send a notification** → **email** → jouw e-mailadres, frequentie **immediately** (geen batching). Dat is de 5-minuten-eis uit deze issue.
+3. Project Settings → **Client Keys (DSN)** → kopiëren naar `VITE_SENTRY_DSN` in Cloudflare Pages (stap 2).
+4. Zonder `VITE_SENTRY_DSN` doet de app niets (zie `src/lib/monitoring.ts`) — zo blijft de weekendversie, die deze variabele niet zet, gegarandeerd los van dit Sentry-project.
+
+### Klaar-criterium
+
+- [ ] Weekendversie en productie draaien op een ander Supabase-project, andere hosting en ander Sentry-project (niets gedeeld).
+- [ ] Een expres veroorzaakte fout in productie komt binnen 5 minuten in Erik's mailbox.
+- [ ] Erik keurt de productieomgeving goed (reactie op [COP-2](/COP/issues/COP-2)).
+
+## Weekendversie klaarzetten (eenmalig, bestaande Vercel/Supabase-accounts)
 
 ### 1. Supabase
 
