@@ -114,6 +114,7 @@ export type EventType =
   | 'ping'
   | 'checkpoint'
   | 'incident'
+  | 'admin_action'
 
 export type PingKind = 'idle' | 'final' | 'radar'
 
@@ -153,6 +154,36 @@ export interface GameEvent {
   id: number
   game_id: string
   type: EventType
+  payload: Record<string, unknown>
+  created_at: string
+}
+
+/** Rij uit de view admin_game_summary (COP-6, beheerscherm): 1 rij per spel met tellingen. */
+export interface AdminGameSummary {
+  id: string
+  join_code: string
+  status: GameStatus
+  started_at: string | null
+  police_start_at: string | null
+  ends_at: string | null
+  ended_at: string | null
+  winner: TeamRole | null
+  winning_team_id: string | null
+  bonus_total_min: number
+  created_at: string
+  player_count: number
+  accepted_photo_count: number
+  rejected_photo_count: number
+}
+
+export type AdminActionType = 'end_time_changed' | 'photo_rejected' | 'game_stopped'
+
+export interface AdminAction {
+  id: number
+  actor_id: string
+  actor_email: string
+  game_id: string | null
+  action: AdminActionType
   payload: Record<string, unknown>
   created_at: string
 }

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useStaffSession } from '../hooks/useStaffSession'
 import { signInStaff, signOutStaff } from '../lib/staffAuth'
 import { Button, ErrorText, Screen, inputClass } from '../components/ui'
+import AdminPanel from './AdminPanel'
 
 // Staff-only login (COP-47/COP-52): geen zelfregistratie, accounts komen uit het
-// Supabase-dashboard. Het beheerscherm zelf is COP-6 (later); dit scherm bewijst
-// alleen dat een staff-account kan inloggen en uitloggen.
+// Supabase-dashboard. Na inloggen zie je meteen het beheerscherm (COP-6).
 export default function StaffLogin() {
   const { session, isLoading } = useStaffSession()
   const [email, setEmail] = useState('')
@@ -36,12 +36,15 @@ export default function StaffLogin() {
 
   if (session) {
     return (
-      <Screen>
-        <p className="text-slate-200">Ingelogd als {session.user.email}.</p>
-        <Button variant="secondary" onClick={() => signOutStaff()}>
-          Uitloggen
-        </Button>
-      </Screen>
+      <>
+        <AdminPanel />
+        <div className="fixed top-3 right-3 z-[2600] flex items-center gap-2 rounded-full bg-slate-900/90 py-1 pr-1 pl-3 text-sm ring-1 ring-slate-700">
+          <span className="text-slate-300">{session.user.email}</span>
+          <button onClick={() => signOutStaff()} className="rounded-full bg-slate-800 px-3 py-1 text-slate-100 ring-1 ring-slate-700">
+            Uitloggen
+          </button>
+        </div>
+      </>
     )
   }
 

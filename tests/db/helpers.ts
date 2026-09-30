@@ -30,6 +30,19 @@ const noSession = { auth: { persistSession: false, autoRefreshToken: false }, gl
 /** Service-role client: omzeilt RLS, alleen om de testsituatie klaar te zetten. */
 export const admin = createClient(env.url, env.serviceKey, noSession)
 
+/** Nieuw staff-account (e-mail/wachtwoord, geen anonieme sessie) en ingelogde client; zie
+ * src/lib/staffAuth.ts en 20260930000007_admin_panel.sql (public.is_staff()). */
+export async function staffClient(): Promise<SupabaseClient> {
+  const email = `staff-${crypto.randomUUID()}@test.local`
+  const password = 'test-wachtwoord-123'
+  const { error: createError } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
+  if (createError) throw createError
+  const client = createClient(env.url, env.anonKey, noSession)
+  const { error } = await client.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return client
+}
+
 /** Een nieuwe "telefoon": eigen anonieme sessie. */
 export async function newPhone(): Promise<SupabaseClient> {
   const client = createClient(env.url, env.anonKey, noSession)
