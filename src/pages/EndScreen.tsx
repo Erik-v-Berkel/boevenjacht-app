@@ -16,6 +16,8 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
   const { game, teams, photos, sights, players } = data
   // De server kan nog op "running" staan terwijl de klok al op 0 is: dan winnen de boeven.
   const winner = game.status === 'ended' ? game.winner : 'thieves'
+  // Handmatig gestopt door beheer (COP-6): geen winnaar, dus eigen tekst i.p.v. "gevangen".
+  const stoppedByAdmin = game.status === 'ended' && game.winner === null
   const winningTeam = teams.find((t) => t.id === game.winning_team_id)
   const myTeam = teams.find((t) => t.id === me.team_id)
   const capturePhoto = photos.find((p) => p.type === 'capture' && p.status === 'accepted')
@@ -57,14 +59,16 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
   )
 
   useEffect(() => {
+    if (stoppedByAdmin) return
     const colors = winner === 'police' ? ['#2563eb', '#ffffff', '#dc2626'] : ['#dc2626', '#facc15', '#ffffff']
     void import('canvas-confetti').then(({ default: confetti }) =>
       confetti({ particleCount: 160, spread: 90, origin: { y: 0.3 }, colors, disableForReducedMotion: true }),
     )
-  }, [winner])
+  }, [winner, stoppedByAdmin])
 
-  const title =
-    winner === 'thieves'
+  const title = stoppedByAdmin
+    ? 'Het spel is gestopt door de organisatie.'
+    : winner === 'thieves'
       ? 'Entkommen! Boeven ontsnapt!'
       : myTeam?.role === 'thieves'
         ? `Festgenommen! Jullie zijn gevangen door ${winningTeam?.name ?? 'de Polizei'} om ${clockTime(game.ended_at!)}.`
@@ -73,7 +77,7 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
       <header className="pt-8 text-center">
-        <p className="text-7xl">{winner === 'thieves' ? '🦹' : '🚓'}</p>
+        <p className="text-7xl">{stoppedByAdmin ? '🛑' : winner === 'thieves' ? '🦹' : '🚓'}</p>
         <h1 className="mt-4 text-3xl font-black">{title}</h1>
         {winner === 'police' && myTeam?.id === winningTeam?.id && <p className="mt-2 text-xl">🏆 Jullie hebben gewonnen!</p>}
       </header>

@@ -1,6 +1,7 @@
 import { useGameData } from '../lib/useGameData'
 import { navigate } from '../lib/router'
 import { Button, ErrorText, Screen } from '../components/ui'
+import { EmergencyButton } from '../components/EmergencyButton'
 import Lobby from './Lobby'
 import MainScreen from './MainScreen'
 
@@ -35,6 +36,10 @@ export default function GameScreen({ gameId, userId }: { gameId: string; userId:
   const me = data.players.find((p) => p.user_id === userId)
   if (!me) return null
 
-  if (data.game.status === 'lobby') return <Lobby data={data} me={me} />
-  return <MainScreen data={data} me={me} />
+  return (
+    <>
+      {data.game.status === 'lobby' ? <Lobby data={data} me={me} /> : <MainScreen data={data} me={me} />}
+      <EmergencyButton gameId={gameId} />
+    </>
+  )
 }

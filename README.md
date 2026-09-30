@@ -69,6 +69,16 @@ Meldingen als de telefoon op zak zit: foto's, pings, radar en de vangst. Op de i
 
 Werkt het niet? Supabase → Edge Functions → push → Logs, en in SQL: `select status_code, content from net._http_response order by id desc limit 5;`.
 
+### Noodmeldingen naar beheer (optioneel, COP-7)
+
+De noodknop in de app (112 bellen + "Meld dit bij Boevenjacht") legt elke melding altijd vast in de tabel `incidents` en in de feed van het spel. Wil je daarnaast direct een bericht op je telefoon (bv. via een gratis Slack- of Discord-"incoming webhook"), zet dan het webhook-adres klaar — zelfde patroon als bij pushmeldingen hierboven, zonder dit blijft het bij loggen:
+
+```sql
+insert into private.app_secrets (key, value) values
+  ('incident_webhook_url', 'https://hooks.slack.com/services/…')
+on conflict (key) do update set value = excluded.value;
+```
+
 ## Spel spelen
 
 1. **De dag ervoor**: open de app, onderaan **Nieuw spel aanmaken**, vul de beheerderscode in. Deel de link in de groepsapp.
@@ -183,8 +193,22 @@ spelers-sessie hierboven wachten:
   prijsberekening incl. lanceeraanbod gebeurt server-side in `submit_booking()`.
 - **`/staff`** — inlogscherm voor staff (Supabase Auth, e-mail/wachtwoord). Geen
   zelfregistratie: accounts worden buiten de app om aangemaakt (Supabase-dashboard →
-  Authentication → Add user). Elke ingelogde gebruiker is staff; het beheerscherm zelf
-  volgt in een later issue.
+  Authentication → Add user). Elke ingelogde gebruiker is staff en ziet na inloggen meteen
+  het beheerscherm.
+
+### Beheerscherm (COP-6)
+
+Na inloggen op `/staff` zie je de lijst van alle spellen (spelersaantal, geaccepteerde/
+afgekeurde foto's, eindtijd). Klik een spel aan voor:
+
+- **Eindtijd aanpassen** — alleen tijdens de voorsprong/zoektijd.
+- **Foto afkeuren** — alleen bonusfoto's (bier/bezienswaardigheid), geen vangstfoto's; een
+  toegekende bonus wordt teruggedraaid en de eindtijd schuift weer op.
+- **Spel stoppen** — eindigt het spel direct zonder winnaar (met bevestigingsstap).
+
+Alle drie gaan via auditbare RPC's (`admin_set_ends_at`, `admin_reject_photo`,
+`admin_stop_game`); geen SQL meer nodig. Elke actie komt in `admin_actions` te staan (wie,
+wat, wanneer, reden) en spelers zien 'm ook terug in hun eigen feed.
 
 ## Privacy
 

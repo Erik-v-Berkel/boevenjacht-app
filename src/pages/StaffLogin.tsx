@@ -3,12 +3,16 @@ import { useStaffSession } from '../hooks/useStaffSession'
 import { signInStaff, signOutStaff } from '../lib/staffAuth'
 import { Button, ErrorText, Screen, inputClass } from '../components/ui'
 import { StaffBookingsList } from '../components/StaffBookingsList'
+import AdminPanel from './AdminPanel'
 
-// Staff-only login (COP-47/COP-52/COP-58): geen zelfregistratie, accounts komen uit het
-// Supabase-dashboard. Na inloggen zie je de boekingenlijst (leestoegang, COP-6-fundament).
-// Acties (eindtijd aanpassen, foto afkeuren, spel stoppen) zijn nog COP-6 (later).
+type StaffTab = 'games' | 'bookings'
+
+// Staff-only login (COP-47/COP-52/COP-58/COP-6): geen zelfregistratie, accounts komen uit het
+// Supabase-dashboard. Na inloggen kies je tussen het beheerscherm (spellen, COP-6) en de
+// boekingenlijst (COP-58).
 export default function StaffLogin() {
   const { session, isLoading } = useStaffSession()
+  const [tab, setTab] = useState<StaffTab>('games')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -37,18 +41,32 @@ export default function StaffLogin() {
 
   if (session) {
     return (
-      <Screen>
-        <header className="flex items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-bold text-slate-100">Boekingen</h1>
-            <p className="text-sm text-slate-400">Ingelogd als {session.user.email}</p>
+      <>
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
+          <div className="flex gap-2">
+            <StaffTabButton active={tab === 'games'} onClick={() => setTab('games')}>
+              Spellen
+            </StaffTabButton>
+            <StaffTabButton active={tab === 'bookings'} onClick={() => setTab('bookings')}>
+              Boekingen
+            </StaffTabButton>
           </div>
-          <Button variant="secondary" className="w-auto" onClick={() => signOutStaff()}>
-            Uitloggen
-          </Button>
-        </header>
-        <StaffBookingsList />
-      </Screen>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="hidden text-slate-400 sm:inline">{session.user.email}</span>
+            <Button variant="secondary" className="w-auto" onClick={() => signOutStaff()}>
+              Uitloggen
+            </Button>
+          </div>
+        </div>
+        {tab === 'games' ? (
+          <AdminPanel />
+        ) : (
+          <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+            <h1 className="text-xl font-bold text-slate-100">Boekingen</h1>
+            <StaffBookingsList />
+          </div>
+        )}
+      </>
     )
   }
 
@@ -78,5 +96,18 @@ export default function StaffLogin() {
         </Button>
       </form>
     </Screen>
+  )
+}
+
+function StaffTabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+        active ? 'bg-yellow-400 text-slate-900' : 'bg-slate-800 text-slate-300 ring-1 ring-slate-700'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

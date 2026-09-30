@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase'
 import { navigate } from '../lib/router'
 import { errorMessage } from '../lib/errors'
 import { normalizeJoinCode } from '../lib/joinCode'
+import { CONSENT_VERSION } from '../lib/safety'
 import { Button, ErrorText, Screen, inputClass } from '../components/ui'
 import { InstallHint } from '../components/InstallHint'
+import { SafetyConsent } from '../components/SafetyConsent'
 
 const NAME_KEY = 'boevenjacht:name'
 
@@ -19,6 +21,7 @@ function savedName() {
 export default function Join({ code }: { code: string }) {
   const joinCode = normalizeJoinCode(code)
   const [name, setName] = useState(savedName)
+  const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,7 +29,12 @@ export default function Join({ code }: { code: string }) {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const { data, error } = await supabase.rpc('join_game', { p_join_code: joinCode, p_name: name })
+    const { data, error } = await supabase.rpc('join_game', {
+      p_join_code: joinCode,
+      p_name: name,
+      p_consent: consent,
+      p_consent_version: CONSENT_VERSION,
+    })
     setBusy(false)
     if (error) return setError(errorMessage(error))
     try {
@@ -56,8 +64,9 @@ export default function Join({ code }: { code: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        <SafetyConsent checked={consent} onChange={setConsent} />
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" disabled={busy || !name.trim()}>
+        <Button type="submit" disabled={busy || !name.trim() || !consent}>
           {busy ? 'Bezig…' : 'Naar de lobby'}
         </Button>
       </form>
