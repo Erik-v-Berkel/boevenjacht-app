@@ -21,6 +21,7 @@ export default function NewGame() {
   const [copied, setCopied] = useState(false)
   const [testMode, setTestMode] = useState(false)
   const [policeTeams, setPoliceTeams] = useState(3)
+  const [citySlug, setCitySlug] = useState('')
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
@@ -29,6 +30,7 @@ export default function NewGame() {
     const { data, error } = await supabase.rpc('create_game', {
       p_admin_code: adminCode,
       p_settings: { police_teams: policeTeams, ...(testMode ? { time_scale: 12 } : {}) },
+      p_city_slug: citySlug.trim() || null,
     })
     setBusy(false)
     if (error) setError(errorMessage(error))
@@ -99,6 +101,16 @@ export default function NewGame() {
         <label className="flex items-center gap-3 text-slate-300">
           <input type="checkbox" className="h-5 w-5" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
           Testspel: tijd loopt 12× zo snel (hele spel in ±16 min)
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          Stadspakket (leeg = standaard Düsseldorf-testlab)
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="bv. dusseldorf of utrecht"
+            value={citySlug}
+            onChange={(e) => setCitySlug(e.target.value)}
+          />
         </label>
         <ErrorText>{error}</ErrorText>
         <Button type="submit" disabled={busy || !adminCode}>

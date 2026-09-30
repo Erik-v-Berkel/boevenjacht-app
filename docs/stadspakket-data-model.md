@@ -4,6 +4,22 @@ Status: voorstel voor het schema (week 1). Implementatie van het volledige spel 
 is [COP-3](/COP/issues/COP-3) (week 2-4); dit document legt alleen het datamodel vast waarop
 dat werk voortbouwt.
 
+## Implementatiestatus (COP-3)
+
+- `create_game(p_admin_code, p_settings, p_city_slug)` kan sinds
+  `20260930000006_city_driven_game.sql` een stadspakket kiezen: de rode lijn gaat naar
+  `games.settings.play_area` en de bezienswaardigheden (`kind = 'bezienswaardigheid'`) gaan naar
+  `sights`, net zoals voorheen alleen de Düsseldorf-sjabloon deed. Zonder `p_city_slug` blijft het
+  oude gedrag (Düsseldorf-sjabloon) ongewijzigd.
+- `city_points_of_interest.radius_m` is toegevoegd (default 60 m) — nodig voor de foto-geofence,
+  stond nog niet in het oorspronkelijke schema.
+- **Nog niet gedekt:** `submit_photo` toetst foto's alleen tegen `settings.play_area`, nog niet
+  tegen `city_forbidden_zones`. Die tabel bestaat en heeft een RLS-policy, maar wordt nog nergens
+  door de spellogica gelezen — vervolgwerk binnen COP-3.
+- **Utrecht-inhoud** (rode lijn + 10 bezienswaardigheden) staat hier nog niet in: dat is
+  veiligheidsdata die Erik zelf moet lopen/bevestigen (zie `veiligheid.md`, "nooit"-regel in
+  `boevenjacht-bestuur`), niet iets een agent kan verzinnen.
+
 ## Doel
 
 Elke stad (Utrecht, en later de testversie Düsseldorf) is data, geen code: een "stadspakket"

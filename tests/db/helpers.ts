@@ -45,12 +45,48 @@ export async function rpc<T = unknown>(client: SupabaseClient, fn: string, args:
   return data as T
 }
 
-export async function createGame(settings: Record<string, unknown> = {}) {
+export async function createGame(settings: Record<string, unknown> = {}, citySlug?: string) {
   const creator = await newPhone()
   return rpc<{ game_id: string; join_code: string }>(creator, 'create_game', {
     p_admin_code: ADMIN_CODE,
     p_settings: settings,
+    p_city_slug: citySlug ?? null,
   })
+}
+
+/** Zet een stadspakket (cities + city_points_of_interest) klaar voor city-driven testspellen. */
+export async function seedCity(opts: {
+  slug: string
+  status?: 'draft' | 'active' | 'archived'
+  /** WKT-polygoon zonder SRID-prefix, bv. 'POLYGON((5.12 52.09, 5.13 52.09, 5.13 52.10, 5.12 52.09))'. */
+  redLineWkt: string
+  pois?: { name: string; lat: number; lng: number; radiusM?: number }[]
+}) {
+  const { data: city, error } = await admin
+    .from('cities')
+    .insert({
+      slug: opts.slug,
+      name: opts.slug,
+      theme: 'test',
+      status: opts.status ?? 'active',
+      red_line: `SRID=4326;${opts.redLineWkt}`,
+    })
+    .select()
+    .single()
+  if (error) throw error
+
+  for (const [i, poi] of (opts.pois ?? []).entries()) {
+    const { error: poiError } = await admin.from('city_points_of_interest').insert({
+      city_id: city.id,
+      kind: 'bezienswaardigheid',
+      name_nl: poi.name,
+      location: `SRID=4326;POINT(${poi.lng} ${poi.lat})`,
+      radius_m: poi.radiusM ?? 60,
+      sort_order: i,
+    })
+    if (poiError) throw poiError
+  }
+  return city as { id: string; slug: string }
 }
 
 export async function teamsOf(gameId: string) {
