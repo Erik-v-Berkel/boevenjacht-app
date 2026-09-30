@@ -3,23 +3,33 @@ import { ensureSession, supabaseConfigured } from './lib/supabase'
 import { errorMessage } from './lib/errors'
 import { usePath } from './lib/router'
 import { Button, ErrorText, Screen } from './components/ui'
+import { BookingWizard } from './components/BookingWizard'
 import Home from './pages/Home'
 import NewGame from './pages/NewGame'
 import Join from './pages/Join'
 import GameScreen from './pages/GameScreen'
+import StaffLogin from './pages/StaffLogin'
 
 export default function App() {
   const path = usePath()
   const [userId, setUserId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
+  // /boeken (stadspakket-checkout) en /staff (staff-login) zijn eigen funnels en
+  // wachten niet op de anonieme spelers-sessie hieronder (COP-52).
+  const skipsPlayerSession = path === '/boeken' || path === '/staff'
+
   const connect = () => {
     setError('')
     ensureSession().then(setUserId, (e) => setError(errorMessage(e)))
   }
   useEffect(() => {
-    if (supabaseConfigured) connect()
-  }, [])
+    if (supabaseConfigured && !skipsPlayerSession) connect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipsPlayerSession])
+
+  if (path === '/boeken') return <BookingWizard />
+  if (path === '/staff') return <StaffLogin />
 
   if (!supabaseConfigured) {
     return (
