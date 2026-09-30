@@ -2,10 +2,8 @@
 -- Coördinaten van Erik (issue-comment) en gekruist met de al goedgekeurde sight_templates-data
 -- (20260930000001_sight_coordinates.sql, 20260924000001_bonus_photos.sql) - komt overeen.
 --
--- Dit is een no-op zolang er geen `cities`-rij met slug 'dusseldorf' bestaat: die rij vereist
--- een rode lijn (speelgebied-grens, NOT NULL), en die data levert deze migratie bewust niet -
--- zie de "nooit"-regel in AGENTS.md en veiligheid.md (geen zelfverzonnen veiligheidsdata).
--- Zie COP-57 voor de openstaande cities/red_line/city_forbidden_zones-stap.
+-- Draait na 20260930000005_duesseldorf_city.sql (die zet de `cities`-rij met slug 'dusseldorf'
+-- neer). city_forbidden_zones blijft nog leeg - zie COP-57.
 --
 -- #4 Rheinuferpromenade en #5 Königsallee zijn lijnen, #7 Hofgarten is een gebied; het huidige
 -- city_points_of_interest-schema heeft alleen een Point-kolom, dus die drie staan hier op een
