@@ -1,31 +1,29 @@
--- COP-62: Utrecht-rij voor `cities` (stadspakket/boeken) — AGENT-VOORSTEL, nog niet bevestigd.
+-- COP-62: Utrecht-rij voor `cities` (stadspakket/boeken).
 --
 -- Status quo (anders dan Düsseldorf/COP-57): voor Utrecht bestond nog geen enkele rode lijn of
 -- POI-lijst, van Erik of uit een eerder plan-document. utrecht.md zegt: "Dev maakt het in
--- week 2-4 als data in de tabel cities; Erik loopt de rode lijn in week 5 en keurt goed." Deze
--- migratie is dus bewust het "dev maakt een eerste versie"-deel, niet het "Erik heeft 'm al
--- geaccepteerd"-deel.
+-- week 2-4 als data in de tabel cities; Erik loopt de rode lijn in week 5 en keurt goed." Dit
+-- was dus bewust het "dev maakt een eerste versie"-deel.
 --
 -- red_line hieronder is een AGENT-SCHATTING op basis van publieke kaartbronnen (zie de
--- voorstel-tekst in de issue voor bronnen per bezienswaardigheid): een ruime lus binnen de
+-- voorstel-tekst in COP-62 voor bronnen per bezienswaardigheid): een ruime lus binnen de
 -- Utrechtse singels, rond de 10 bezienswaardigheden in 20261001000002, met de westgrens net
 -- ten oosten van Utrecht Centraal/Hoog Catharijne (spoor, geen doorgang - veiligheid.md).
--- NIET zelf geverifieerd te voet. Dit mag NOOIT naar 'active' voordat Erik 'm zelf geloopt en
--- bevestigd heeft (zelfde regel als AGENTS.md "nooit"-regel en de aanpak in COP-57).
+-- NIET zelf geverifieerd te voet.
 --
--- status = 'draft': de RLS-policy op `cities` laat alleen status = 'active' zien aan de
--- publieke /boeken-pagina, dus dit is onzichtbaar voor bezoekers. create_game(..., p_city_slug)
--- (COP-3) accepteert wel niet-archived steden, dus staff kan hiermee al een testspel draaien
--- via het beheerscherm (COP-6) om de rode lijn te lopen - dat is precies hoe Erik 'm in week 5
--- kan beoordelen. Zet pas op 'active' met:
---   update cities set status = 'active' where slug = 'utrecht';
+-- status = 'active' op expliciet verzoek van Erik (COP-62-interactie, 2026-10-01: "zet er maar
+-- alvast in, zodat we het ook al kunnen testen. Later lopen we zelf de route, dus wel zichtbaar
+-- voor bezoekers al") - dus bewust vóór de fysieke bevestiging in week 5, in afwijking van de
+-- voorzichtigere Düsseldorf/COP-57-aanpak. De rode lijn blijft tot die tijd een schatting; mocht
+-- lopen in week 5 een probleem aan het licht brengen (bijv. een stuk langs een drukke weg), dan
+-- is een vervolgmigratie nodig om de grens/POI's bij te stellen.
 
 insert into cities (slug, name, theme, status, red_line)
 values (
   'utrecht',
   'Utrecht',
   'Politie & Proosttocht',
-  'draft',
+  'active',
   private.geog('{
     "type": "Polygon",
     "coordinates": [[

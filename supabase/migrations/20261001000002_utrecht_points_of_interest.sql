@@ -1,12 +1,13 @@
--- COP-62: Utrecht bezienswaardigheden voor `city_points_of_interest` — AGENT-VOORSTEL.
+-- COP-62: Utrecht bezienswaardigheden voor `city_points_of_interest`.
 --
 -- 10 bezienswaardigheden (thema Politie & Proost, zie utrecht.md), gekozen uit publiek
 -- bekende Utrechtse bezienswaardigheden binnen de rode-lijn-schets van 20261001000001.
 -- Coördinaten komen uit publieke kaartbronnen (Wikipedia/Wikidata/gemeentelijke sites),
 -- NIET zelf ter plekke gemeten. Net als bij Düsseldorf (PLAN.md §3): "benaderingen, controleer
--- en verfijn in Google Maps vóór het spel." Erik loopt de route in week 5 en kan namen,
--- volgorde of de keuze zelf nog aanpassen - dit is content, geen schema (zie
--- docs/stadspakket-data-model.md, "Open vragen voor Erik").
+-- en verfijn in Google Maps vóór het spel." Op Eriks expliciete verzoek (COP-62, 2026-10-01)
+-- staat de stad al op 'active' (zichtbaar/boekbaar) zodat er nu al getest kan worden; Erik loopt
+-- de route zelf nog in week 5 en kan namen, volgorde of de keuze zelf nog aanpassen - dit is
+-- content, geen schema (zie docs/stadspakket-data-model.md, "Open vragen voor Erik").
 --
 -- Geen partnerkroegen hier: die lopen via het bestaande vrije-invoer-systeem voor bierfoto's
 -- (PLAN.md §4, normalize_bar_name) en worden pas met is_partner_pub = true gezet zodra sales
