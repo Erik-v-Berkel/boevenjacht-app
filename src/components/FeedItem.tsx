@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { clockTime, eventText } from '../lib/events'
 import { errorMessage } from '../lib/errors'
 import { supabase } from '../lib/supabase'
@@ -67,13 +67,33 @@ function Reactions({
 }) {
   const [picking, setPicking] = useState(false)
   const [writing, setWriting] = useState(false)
-  const toggle = (emoji: string) => {
+  // Snelle feedback vooruitlopend op de server: zonder dit verdwijnt een nieuwe reactie uit
+  // beeld totdat Realtime terugkomt (en lijkt het alsof erop klikken niets doet).
+  const [pending, setPending] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    setPending((p) => {
+      const next = { ...p }
+      let changed = false
+      for (const emoji of Object.keys(p)) {
+        if (reactions.some((r) => r.emoji === emoji && r.player_id === meId) === p[emoji]) {
+          delete next[emoji]
+          changed = true
+        }
+      }
+      return changed ? next : p
+    })
+  }, [reactions, meId])
+  const toggle = async (emoji: string) => {
     setPicking(false)
-    void supabase.rpc('toggle_reaction', { p_photo_id: photoId, p_emoji: emoji })
+    const wasMine = pending[emoji] ?? reactions.some((r) => r.emoji === emoji && r.player_id === meId)
+    setPending((p) => ({ ...p, [emoji]: !wasMine }))
+    const { error } = await supabase.rpc('toggle_reaction', { p_photo_id: photoId, p_emoji: emoji })
+    if (error) setPending((p) => ({ ...p, [emoji]: wasMine }))
   }
   const counts = REACTION_EMOJI.map((emoji) => {
-    const rs = reactions.filter((r) => r.emoji === emoji)
-    return { emoji, n: rs.length, mine: rs.some((r) => r.player_id === meId) }
+    const others = reactions.filter((r) => r.emoji === emoji && r.player_id !== meId).length
+    const mine = pending[emoji] ?? reactions.some((r) => r.emoji === emoji && r.player_id === meId)
+    return { emoji, n: others + (mine ? 1 : 0), mine }
   })
   return (
     <>
