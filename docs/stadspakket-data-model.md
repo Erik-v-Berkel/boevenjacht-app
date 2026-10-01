@@ -95,7 +95,10 @@ is een boeking een aanvraag die Erik/support handmatig bevestigt.
 
 ## Open vragen voor Erik
 
-- Bevestigen: 10 bezienswaardigheden + welke kroegen voor het Utrecht-stadspakket (rode lijn
-  loopt Erik zelf in week 5, zie `utrecht.md`) — nog niet ingevuld, dat is content, geen schema.
+- Bevestigen: 10 bezienswaardigheden + rode lijn voor het Utrecht-stadspakket. COP-62 heeft een
+  eerste voorstel (`status = 'draft'`, dus onzichtbaar op `/boeken`) ingevoerd met publiek
+  opzoekbare coördinaten — geen van de agent zelf gelopen/gemeten route. Erik loopt de rode lijn
+  zelf in week 5 (zie `utrecht.md`) en past namen/volgorde/grens aan voordat de stad op `active`
+  gaat. Kroegen: nog geen (apart, via sales, zie `utrecht.md`).
 - Vertaalworkflow NL/EN: nu losse kolommen per taal; prima voor 2 talen, zou bij een 3e taal
   een aparte `city_translations`-tabel worden.
