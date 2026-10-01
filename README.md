@@ -10,13 +10,25 @@ Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spe
 
 ### 1. Supabase
 
-1. **SQL Editor**: plak elk bestand uit `supabase/migrations/` **in volgorde** en voer het uit (elk bestand één keer):
+1. **SQL Editor**: plak **elk bestand** uit `supabase/migrations/` **in bestandsnaam-volgorde** en voer ze één voor één uit (elk bestand precies één keer). Dit is de volledige lijst op dit moment — bij twijfel: sorteer de map op naam en loop ze van boven naar beneden af, mis je er één dan krijg je een "relation ... does not exist"-fout verderop:
    1. `20260922000001_games_teams_players.sql`
    2. `20260923000001_clock_engine.sql`
    3. `20260924000001_bonus_photos.sql`
    4. `20260925000001_capture.sql`
    5. `20260926000001_team_locations.sql`
    6. `20260927000001_extras.sql` (pings, radar, emoji- en tekstreacties, replay, pushmeldingen, 1–5 Polizei-teams)
+   7. `20260928000001_lobby_police_teams.sql`
+   8. `20260929000001_checkpoints.sql`
+   9. `20260930000001_sight_coordinates.sql`
+   10. `20260930000002_stadspakketten.sql` (stadspakket-schema: `cities`, `city_forbidden_zones`, `city_points_of_interest`)
+   11. `20260930000003_products_and_bookings.sql`
+   12. `20260930000004_staff_bookings_read.sql`
+   13. `20260930000005_safety.sql`
+   14. `20260930000006_city_driven_game.sql`
+   15. `20260930000007_admin_panel.sql`
+   16. `20261001000001_utrecht_city.sql`
+   17. `20261001000002_utrecht_points_of_interest.sql`
+   18. `20261001000003_utrecht_forbidden_zones.sql`
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
