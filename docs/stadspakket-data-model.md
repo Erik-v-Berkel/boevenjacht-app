@@ -19,6 +19,15 @@ dat werk voortbouwt.
 - **Utrecht-inhoud** (rode lijn + 10 bezienswaardigheden) staat hier nog niet in: dat is
   veiligheidsdata die Erik zelf moet lopen/bevestigen (zie `veiligheid.md`, "nooit"-regel in
   `boevenjacht-bestuur`), niet iets een agent kan verzinnen.
+- **COP-5 (Mollie-checkout + webhook)**: `fulfil_booking_payment()` (`20261002000001_booking_payment.sql`)
+  maakt bij een gelukte betaling automatisch het spel aan (`private.create_game_core()`, hergebruikt
+  uit `create_game()`) en zet `bookings.status` op `confirmed`. De Edge Functions
+  `mollie-create-payment`/`mollie-webhook` doen de aanroepen naar Mollie en de join-link-mail
+  (Resend). **Niet iets een agent kan afronden:** een Mollie-/Resend-account aanmaken en de
+  bijbehorende API-keys als Supabase-secret zetten — zie README "Betalen met Mollie". Tot die
+  secrets gezet zijn, blijft een boeking na de checkout op `pending` staan (geen spel, geen mail).
+  Open vraag aan Erik: het aantal Polizei-teams per boeking (`private.police_teams_for()`) is een
+  vuistregel (zoveel teams van max. 3 als nodig, geclamped op 1-5) — geen vastgelegde spelregel.
 
 ## Doel
 
@@ -72,9 +81,13 @@ persoonsgegevens (naam/e-mail) en is daarom nooit direct leesbaar via de anon-ke
   race-condition-vrij te tellen, analoog aan de row-lock voor spelregels (AGENTS.md regel 3).
 - `launch_offer_slots_remaining()`: publiek, alleen-lezen tellertje voor de lanceerbanner in de
   UI ("nog X van de 10 plekken"), zonder boekingen of contactgegevens bloot te geven.
+- `fulfil_booking_payment(...)` (COP-5, service-role only): bevestigt een boeking na een gelukte
+  Mollie-betaling, maakt het spel aan en is idempotent bij dubbele webhook-meldingen.
+- `get_booking_status(...)`: publiek, alleen status + spelcode (geen contactgegevens), voor de
+  "bedankt"-pagina na terugkomst van Mollie.
 
-Dit dekt alleen de checkout-aanvraag (COP-46). Betaling (Mollie) volgt in week 3–4; tot die tijd
-is een boeking een aanvraag die Erik/support handmatig bevestigt.
+Checkout-aanvraag (COP-46) en betaling (COP-5) zijn allebei gedekt. Zonder Mollie-/Resend-secrets
+(zie README) blijft een boeking na de aanvraag op `pending` staan, net als voorheen.
 
 ## Bewuste keuzes
 

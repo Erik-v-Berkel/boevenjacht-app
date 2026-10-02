@@ -34,3 +34,8 @@ export interface BookingResult {
   launchOfferApplied: boolean
   status: string
 }
+
+export interface BookingStatus {
+  status: string
+  joinCode: string | null
+}

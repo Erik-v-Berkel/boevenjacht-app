@@ -417,3 +417,11 @@ enabled = true
 [functions.push]
 # Aangeroepen door de databasetrigger met een eigen geheim (x-push-secret), niet met een JWT.
 verify_jwt = false
+
+[functions.mollie-create-payment]
+# Aangeroepen door de boekingswizard met de normale anon-sessie; verify_jwt blijft aan (default).
+
+[functions.mollie-webhook]
+# Aangeroepen door Mollie zelf (geen Supabase-sessie, geen eigen geheime header mogelijk) — de
+# functie haalt de betaalstatus altijd zelf bij Mollie op voordat ze die vertrouwt, zie index.ts.
+verify_jwt = false

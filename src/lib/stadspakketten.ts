@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { BookingDraft, BookingResult, City, Product } from './stadspakketTypes'
+import type { BookingDraft, BookingResult, BookingStatus, City, Product } from './stadspakketTypes'
 
 export async function fetchActiveCities(): Promise<City[]> {
   const { data, error } = await supabase
@@ -58,4 +58,22 @@ export async function submitBooking(draft: BookingDraft): Promise<BookingResult>
     launchOfferApplied: data.launch_offer_applied,
     status: data.status,
   }
+}
+
+/** Zet de Mollie-checkout uit voor een bestaande boeking en geeft de checkout-URL terug. */
+export async function startMolliePayment(bookingId: string): Promise<{ checkoutUrl: string }> {
+  const { data, error } = await supabase.functions.invoke('mollie-create-payment', {
+    body: { booking_id: bookingId, app_base_url: location.origin },
+  })
+  if (error) throw error
+  return { checkoutUrl: data.checkout_url }
+}
+
+/** Voor de "bedankt"-pagina na terugkomst van Mollie: alleen status + spelcode, geen PII. */
+export async function fetchBookingStatus(bookingId: string): Promise<BookingStatus> {
+  const { data, error } = await supabase.rpc('get_booking_status', { p_booking_id: bookingId })
+  if (error) throw error
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) throw new Error('boeking niet gevonden')
+  return { status: row.status, joinCode: row.join_code }
 }
