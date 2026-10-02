@@ -14,7 +14,8 @@
     "db:stop": "npx --yes supabase stop",
     "db:reset": "npx --yes supabase db reset",
     "icons": "pwa-assets-generator --preset minimal-2023 public/icon.svg",
-    "test:e2e": "node --experimental-strip-types tests/e2e/fullGame.mjs"
+    "test:e2e": "node --experimental-strip-types tests/e2e/fullGame.mjs",
+    "test:capacity": "node --experimental-strip-types tests/load/capacityTest.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",

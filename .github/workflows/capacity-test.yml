@@ -1,0 +1,27 @@
+name: Capaciteitstest
+
+# COP-10: 6 spellen x 18 spelers tegelijk tegen de echte Supabase-RPC's. Draait op de
+# GitHub-runner (Docker + Node 22 aanwezig) zodat dit niet van Erik's eigen laptop afhangt.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/load/**'
+      - '.github/workflows/capacity-test.yml'
+
+jobs:
+  capacity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run db:start
+      - run: npm run test:capacity
+      - if: always()
+        run: npm run db:stop
