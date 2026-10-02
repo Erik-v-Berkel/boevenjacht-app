@@ -109,6 +109,7 @@ on conflict (key) do update set value = excluded.value;
   npm test              # unit-tests + alle spelregels tegen de lokale database
   npm run dev           # in een tweede terminal, daarna:
   npm run test:e2e      # heel spel in de browser met 5 nep-telefoons (Edge), screenshots in test-results/
+  npm run test:capacity # 6 spellen x 18 spelers tegelijk tegen de RPC's, nep-GPS + snelle klok (±90 s)
   ```
 
   Na een wijziging in `supabase/migrations/`: `npm run db:reset` (lokale beheerderscode is dan `test-admin`, zie `supabase/seed.sql`).
