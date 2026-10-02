@@ -18,8 +18,9 @@ describe('is_staff / RLS: beheer ziet alles, spelers alleen hun eigen spel', () 
   })
 
   it('staff ziet elk spel in admin_game_summary, met de juiste tellingen', async () => {
-    const { game_id, players } = await startedGame()
-    await submit(players[0].phone, game_id, { type: 'beer', at: AT.uerige, bar: 'Uerige' })
+    const { game_id, players } = await startedGame({ time_scale: 1000 }) // voorsprong 0,9 s, spel 11,7 s
+    await new Promise((r) => setTimeout(r, 1_000)) // wacht tot de voorsprong voorbij is
+    await submit(players[0].phone, game_id, { type: 'beer', at: AT.uerige, bar: 'Uerige' }) // submit_photo synct de klok
     const staff = await staffClient()
 
     const { data, error } = await staff.from('admin_game_summary').select('*').eq('id', game_id).single()
@@ -52,10 +53,12 @@ describe('admin_set_ends_at: eindtijd aanpassen', () => {
       p_ends_at: newEndsAt,
       p_reason: 'Test: eerder klaar',
     })
-    expect(updated.ends_at).toBe(newEndsAt)
+    // Postgres/PostgREST geeft timestamptz terug als '...+00:00', Date.toISOString() eindigt op 'Z':
+    // zelfde tijdstip, andere string-notatie, dus vergelijken via de numerieke waarde.
+    expect(Date.parse(updated.ends_at)).toBe(Date.parse(newEndsAt))
 
     const game = await gameRow(game_id)
-    expect(game.ends_at).toBe(newEndsAt)
+    expect(Date.parse(game.ends_at)).toBe(Date.parse(newEndsAt))
     expect(await eventTypes(game_id)).toEqual(['game_started', 'admin_action'])
 
     const { data: log } = await admin.from('admin_actions').select('*').eq('game_id', game_id).single()
@@ -102,7 +105,8 @@ describe('admin_reject_photo: foto afkeuren', () => {
   })
 
   it('weigert een vangstfoto af te keuren', async () => {
-    const { game_id, players } = await startedGame()
+    const { game_id, players } = await startedGame({ time_scale: 1000 }) // voorsprong 0,9 s, spel 11,7 s
+    await new Promise((r) => setTimeout(r, 1_000)) // wacht tot de voorsprong voorbij is: politie mag pas dan vangen
     const path = `${game_id}/${crypto.randomUUID()}.jpg`
     await players[1].phone.storage
       .from('photos')
