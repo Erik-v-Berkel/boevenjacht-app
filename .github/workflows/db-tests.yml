@@ -1,0 +1,29 @@
+name: Database-tests
+
+# Draait de spelregel-/RPC-tests (tests/db) tegen een echte lokale Supabase op de GitHub-runner,
+# zodat een wijziging in supabase/migrations/** niet ongetest blijft als een agent geen Docker
+# beschikbaar heeft (zie COP-5). Los van de capaciteitstest (.github/workflows/capacity-test.yml),
+# die iets anders test (load, niet correctheid per RPC).
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/db/**'
+      - 'src/**/*.test.ts'
+      - 'src/**/*.test.tsx'
+
+jobs:
+  db-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run db:start
+      - run: npm test
+      - if: always()
+        run: npm run db:stop
