@@ -66,7 +66,7 @@ describe('join_game', () => {
   it('geeft dezelfde speler terug bij opnieuw meedoen (herladen)', async () => {
     const { join_code } = await createGame()
     const first = await joinedPhone(join_code, 'Erik')
-    const again = await rpc<{ player_id: string }>(first.phone, 'join_game', { p_join_code: join_code, p_name: 'Erik V' })
+    const again = await rpc<{ player_id: string }>(first.phone, 'join_game', { p_join_code: join_code, p_name: 'Erik V', p_consent: true, p_consent_version: 'v1' })
     expect(again.player_id).toBe(first.player_id)
     const { data } = await admin.from('players').select('name').eq('id', first.player_id).single()
     expect(data!.name).toBe('Erik V')
@@ -78,7 +78,7 @@ describe('join_game', () => {
     await admin.from('games').update({ status: 'headstart' }).eq('id', game_id)
 
     await expect(joinedPhone(join_code, 'Laatkomer')).rejects.toThrow('Dit spel is al begonnen')
-    const again = await rpc<{ player_id: string }>(erik.phone, 'join_game', { p_join_code: join_code, p_name: 'Erik' })
+    const again = await rpc<{ player_id: string }>(erik.phone, 'join_game', { p_join_code: join_code, p_name: 'Erik', p_consent: true, p_consent_version: 'v1' })
     expect(again.player_id).toBe(erik.player_id)
   })
 })

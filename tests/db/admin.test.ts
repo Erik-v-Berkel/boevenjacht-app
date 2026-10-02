@@ -62,7 +62,8 @@ describe('admin_set_ends_at: eindtijd aanpassen', () => {
     expect(await eventTypes(game_id)).toEqual(['game_started', 'admin_action'])
 
     const { data: log } = await admin.from('admin_actions').select('*').eq('game_id', game_id).single()
-    expect(log).toMatchObject({ action: 'end_time_changed', payload: { new_ends_at: newEndsAt, reason: 'Test: eerder klaar' } })
+    expect(log).toMatchObject({ action: 'end_time_changed', payload: { reason: 'Test: eerder klaar' } })
+    expect(Date.parse((log as any).payload.new_ends_at)).toBe(Date.parse(newEndsAt))
   })
 
   it('weigert een spel dat nog in de lobby staat', async () => {
