@@ -4,6 +4,7 @@ import { errorMessage } from './lib/errors'
 import { usePath } from './lib/router'
 import { Button, ErrorText, Screen } from './components/ui'
 import { BookingWizard } from './components/BookingWizard'
+import { BookingThankYou } from './pages/BookingThankYou'
 import Home from './pages/Home'
 import NewGame from './pages/NewGame'
 import Join from './pages/Join'
@@ -15,9 +16,12 @@ export default function App() {
   const [userId, setUserId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  // /boeken (stadspakket-checkout) en /staff (staff-login) zijn eigen funnels en
-  // wachten niet op de anonieme spelers-sessie hieronder (COP-52).
-  const skipsPlayerSession = path === '/boeken' || path === '/staff'
+  const bookingThankYou = path.match(/^\/boeken\/bedankt\/([0-9a-f-]{36})\/?$/)
+
+  // /boeken (stadspakket-checkout), /boeken/bedankt/:id (terug van Mollie) en /staff
+  // (staff-login) zijn eigen funnels en wachten niet op de anonieme spelers-sessie
+  // hieronder (COP-52, COP-5).
+  const skipsPlayerSession = path === '/boeken' || bookingThankYou !== null || path === '/staff'
 
   const connect = () => {
     setError('')
@@ -29,6 +33,7 @@ export default function App() {
   }, [skipsPlayerSession])
 
   if (path === '/boeken') return <BookingWizard />
+  if (bookingThankYou) return <BookingThankYou bookingId={bookingThankYou[1]} />
   if (path === '/staff') return <StaffLogin />
 
   if (!supabaseConfigured) {

@@ -3,12 +3,13 @@ import {
   fetchActiveCities,
   fetchActiveProducts,
   fetchLaunchOfferSlotsRemaining,
+  startMolliePayment,
   submitBooking,
 } from '../lib/stadspakketten'
 import { applyLaunchOfferPreview, formatEuroCents, previewSubtotalCents } from '../pricing'
-import type { BookingResult, City, Product } from '../lib/stadspakketTypes'
+import type { City, Product } from '../lib/stadspakketTypes'
 
-type Step = 'stad' | 'pakket' | 'gegevens' | 'bevestigd'
+type Step = 'stad' | 'pakket' | 'gegevens'
 
 export function BookingWizard() {
   const [cities, setCities] = useState<City[]>([])
@@ -26,7 +27,7 @@ export function BookingWizard() {
   const [locale, setLocale] = useState<'nl' | 'en'>('nl')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [result, setResult] = useState<BookingResult | null>(null)
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -69,6 +70,16 @@ export function BookingWizard() {
     emailLooksValid &&
     !submitting
 
+  async function goToCheckout(bookingId: string) {
+    try {
+      const { checkoutUrl } = await startMolliePayment(bookingId)
+      location.href = checkoutUrl
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Betaling starten mislukt, probeer het opnieuw.')
+      setSubmitting(false)
+    }
+  }
+
   async function handleSubmit() {
     if (!selectedCity || !selectedProduct || !canSubmit) return
     setSubmitting(true)
@@ -82,11 +93,10 @@ export function BookingWizard() {
         contactEmail: contactEmail.trim(),
         locale,
       })
-      setResult(booking)
-      setStep('bevestigd')
+      setPendingBookingId(booking.id)
+      await goToCheckout(booking.id)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Boeking mislukt, probeer het opnieuw.')
-    } finally {
       setSubmitting(false)
     }
   }
@@ -106,7 +116,7 @@ export function BookingWizard() {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 p-4 text-neutral-100">
       <ol className="flex justify-between text-xs uppercase tracking-wide text-neutral-500">
-        {(['stad', 'pakket', 'gegevens', 'bevestigd'] as Step[]).map((s) => (
+        {(['stad', 'pakket', 'gegevens'] as Step[]).map((s) => (
           <li key={s} className={s === step ? 'font-bold text-amber-400' : undefined}>
             {s}
           </li>
@@ -243,16 +253,32 @@ export function BookingWizard() {
                 <span>{formatEuroCents(preview.total)}</span>
               </div>
               <p className="mt-2 text-xs text-neutral-500">
-                Definitief bedrag wordt door de server bevestigd. We nemen contact op om de betaling
-                af te ronden.
+                Definitief bedrag wordt door de server bevestigd. Hierna ga je direct door naar de
+                beveiligde betaalpagina van Mollie.
               </p>
             </div>
           )}
 
           {submitError && (
-            <p className="text-red-400" role="alert">
-              {submitError}
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-red-400" role="alert">
+                {submitError}
+              </p>
+              {pendingBookingId && (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => {
+                    setSubmitting(true)
+                    setSubmitError(null)
+                    void goToCheckout(pendingBookingId)
+                  }}
+                  className="text-sm text-amber-400 underline disabled:opacity-50"
+                >
+                  Probeer de betaling opnieuw (boeking is al aangemaakt)
+                </button>
+              )}
+            </div>
           )}
 
           <div className="flex gap-3">
@@ -265,23 +291,9 @@ export function BookingWizard() {
               onClick={handleSubmit}
               className="flex-1 rounded-lg bg-amber-400 p-3 font-semibold text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Bezig…' : 'Boeking aanvragen'}
+              {submitting ? 'Bezig…' : 'Naar betalen'}
             </button>
           </div>
-        </section>
-      )}
-
-      {step === 'bevestigd' && result && (
-        <section className="flex flex-col gap-3 text-center">
-          <h1 className="text-xl font-bold">Aanvraag ontvangen 🚓</h1>
-          <p className="text-neutral-300">
-            Totaal: <strong>{formatEuroCents(result.priceCentsTotal)}</strong> (excl. btw)
-            {result.launchOfferApplied ? ' — inclusief 25% lanceerkorting' : ''}
-          </p>
-          <p className="text-sm text-neutral-500">
-            We nemen contact op via {contactEmail} om de boeking te bevestigen en de betaling af te
-            ronden.
-          </p>
         </section>
       )}
     </div>

@@ -29,6 +29,10 @@ Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spe
    16. `20261001000001_utrecht_city.sql`
    17. `20261001000002_utrecht_points_of_interest.sql`
    18. `20261001000003_utrecht_forbidden_zones.sql`
+   19. `20261001000004_fix_copy_sights_from_city_search_path.sql`
+   20. `20261001000005_backfill_sight_coordinates.sql`
+   21. `20261001000006_fix_konigsallee_skew.sql`
+   22. `20261002000001_booking_payment.sql` (Mollie-checkout + webhook, zie "Betalen met Mollie")
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
@@ -80,6 +84,46 @@ Meldingen als de telefoon op zak zit: foto's, pings, radar en de vangst. Op de i
 5. **Vercel**: `VITE_VAPID_PUBLIC_KEY=<public key>` toevoegen en redeployen.
 
 Werkt het niet? Supabase → Edge Functions → push → Logs, en in SQL: `select status_code, content from net._http_response order by id desc limit 5;`.
+
+### Betalen met Mollie (COP-5)
+
+Boeken op `/boeken` eindigt in een Mollie-checkout; na een gelukte betaling maakt een webhook het
+spel automatisch aan en mailt de join-link. **Twee dingen kan alleen jij doen, geen agent:** een
+Mollie-account aanmaken (vereist KYC/bankgegevens) en e-mail laten versturen (vereist een
+geverifieerd verzend-adres/domein). Zonder deze twee secrets blijft een boeking na betaling op
+"we controleren je betaling" staan.
+
+1. **Mollie**: account op [mollie.com](https://mollie.com), daarna Dashboard → Ontwikkelaars →
+   API-sleutels → de **testsleutel** (begint met `test_…`) kopiëren. Live gaan kan later met de
+   livesleutel, zonder codewijziging.
+2. **Resend** (gratis tot 3.000 mails/maand/100 per dag) voor de join-link-mail: account op
+   [resend.com](https://resend.com) → API Keys → sleutel aanmaken. Voor een eigen afzenderadres
+   (bv. `boekingen@boevenjacht.nl`) moet je ook een domein verifiëren (Resend → Domains, een
+   paar DNS-records); zonder dat werkt alleen Resend's test-afzender `onboarding@resend.dev`,
+   die alleen naar je eigen Resend-accountmail mag versturen (prima om de flow te testen, niet
+   om aan klanten te mailen).
+3. Edge Functions uitrollen en de secrets zetten (`<ref>` = project-ref uit de Supabase-URL):
+
+   ```sh
+   npx supabase login
+   npx supabase link --project-ref <ref>
+   npx supabase secrets set \
+     MOLLIE_API_KEY=test_xxxxxxxxxxxx \
+     RESEND_API_KEY=re_xxxxxxxxxxxx \
+     BOOKING_MAIL_FROM="Boevenjacht <boekingen@boevenjacht.nl>" \
+     APP_BASE_URL=https://<jouw-vercel-domein>
+   npx supabase functions deploy mollie-create-payment
+   npx supabase functions deploy mollie-webhook --no-verify-jwt
+   ```
+
+4. Testbetaling: ga naar `/boeken`, rond een boeking af. Mollie's testmodus (met een `test_…`
+   sleutel) toont een keuzescherm "gelukt/mislukt/verlopen" in plaats van een echte betaling.
+   Bij "gelukt" moet je binnen een minuut op de "bedankt"-pagina de spelcode zien en een mail
+   krijgen (bij een geverifieerd domein, anders alleen op je eigen Resend-accountmail).
+
+Werkt het niet? Supabase → Edge Functions → mollie-webhook → Logs. `bookings.mollie_status` in de
+database laat de ruwe Mollie-status zien; `bookings.status` blijft `pending` als de webhook de
+boeking nooit heeft bereikt (bv. omdat de secrets nog niet gezet zijn).
 
 ### Noodmeldingen naar beheer (optioneel, COP-7)
 
