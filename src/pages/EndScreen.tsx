@@ -8,6 +8,7 @@ import type { Photo, Player } from '../lib/types'
 import { FeedItem, Lightbox } from '../components/FeedItem'
 import { GameMap } from '../components/GameMap'
 import { ReplayMap } from '../components/ReplayMap'
+import { ShareReplayButton } from '../components/ShareReplayButton'
 import { computeAwards } from '../lib/awards'
 import { useLocationHistory } from '../lib/useLocationHistory'
 import { Button } from '../components/ui'
@@ -140,6 +141,18 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
               now={now}
             />
           }
+        />
+        <ShareReplayButton
+          className="mt-3"
+          fileName={`boevenjacht-${game.join_code}`}
+          data={{
+            emoji: stoppedByAdmin ? '🛑' : winner === 'thieves' ? '🦹' : '🚓',
+            title,
+            duration: formatDuration(duration * game.settings.time_scale),
+            bonusMin: game.bonus_total_min,
+            beerCount: bonus.filter((p) => p.type === 'beer').length,
+            sightCount: bonus.filter((p) => p.type === 'sight').length,
+          }}
         />
       </section>
 
