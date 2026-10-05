@@ -21,6 +21,9 @@ export interface GameSettings {
   ping_radius_m?: number
   radars_per_team?: number
   police_teams?: number
+  // COP-74: optioneel, alleen gezet als een spel een hard plafond op het *aantal* kroegfoto's wil
+  // (los van max_bonus_total_min). Onbekend/afwezig = geen plafond.
+  max_beer_count?: number
 }
 
 export type SightGeometry = Point | LineString | Polygon

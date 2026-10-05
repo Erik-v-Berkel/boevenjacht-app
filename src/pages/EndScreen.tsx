@@ -5,6 +5,7 @@ import { navigate } from '../lib/router'
 import { photoLabel, thiefPhotos, usePhotoUrls } from '../lib/photos'
 import type { GameData } from '../lib/useGameData'
 import type { Photo, Player } from '../lib/types'
+import { FeedbackForm } from '../components/FeedbackForm'
 import { FeedItem, Lightbox } from '../components/FeedItem'
 import { GameMap } from '../components/GameMap'
 import { ReplayMap } from '../components/ReplayMap'
@@ -190,6 +191,8 @@ export default function EndScreen({ data, me, now }: { data: GameData; me: Playe
           />
         ))}
       </section>
+
+      <FeedbackForm gameId={game.id} />
 
       <button className="text-sm text-slate-500 underline" onClick={() => navigate('/')}>
         Naar het begin

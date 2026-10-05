@@ -44,6 +44,26 @@ describe('bierfoto', () => {
     const res = await submit(players[0].phone, game_id, { type: 'beer', at: AT.uerige, bar: '  !! ' })
     expect(res.reject_reason).toBe('Vul de naam van de kroeg in')
   })
+
+  it('max_beer_count (COP-74): afgewezen zodra het aantal kroegfoto\'s het plafond raakt', async () => {
+    const { game_id, players } = await startedGame({ max_beer_count: 1 })
+    const boef = players[0].phone
+    const eerste = await submit(boef, game_id, { type: 'beer', at: AT.uerige, bar: 'Uerige' })
+    expect(eerste.status).toBe('accepted')
+    await skipCooldown(game_id)
+
+    const tweede = await submit(boef, game_id, { type: 'beer', at: AT.schumacher, bar: 'Schumacher' })
+    expect(tweede).toMatchObject({ status: 'rejected', reject_reason: "Maximum aantal kroegfoto's bereikt (1)" })
+  })
+
+  it('zonder max_beer_count: geen plafond op het aantal (bestaand gedrag ongewijzigd)', async () => {
+    const { game_id, players } = await startedGame()
+    const boef = players[0].phone
+    await submit(boef, game_id, { type: 'beer', at: AT.uerige, bar: 'Uerige' })
+    await skipCooldown(game_id)
+    const res = await submit(boef, game_id, { type: 'beer', at: AT.schumacher, bar: 'Schumacher' })
+    expect(res.status).toBe('accepted')
+  })
 })
 
 describe('bezienswaardigheid', () => {
