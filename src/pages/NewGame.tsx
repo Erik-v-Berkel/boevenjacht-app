@@ -22,14 +22,20 @@ export default function NewGame() {
   const [testMode, setTestMode] = useState(false)
   const [policeTeams, setPoliceTeams] = useState(3)
   const [citySlug, setCitySlug] = useState('')
+  const [maxBeerCount, setMaxBeerCount] = useState('')
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setError('')
+    const maxBeer = Number.parseInt(maxBeerCount, 10)
     const { data, error } = await supabase.rpc('create_game', {
       p_admin_code: adminCode,
-      p_settings: { police_teams: policeTeams, ...(testMode ? { time_scale: 12 } : {}) },
+      p_settings: {
+        police_teams: policeTeams,
+        ...(testMode ? { time_scale: 12 } : {}),
+        ...(Number.isFinite(maxBeer) && maxBeer > 0 ? { max_beer_count: maxBeer } : {}),
+      },
       p_city_slug: citySlug.trim() || null,
     })
     setBusy(false)
@@ -110,6 +116,17 @@ export default function NewGame() {
             placeholder="bv. dusseldorf of utrecht"
             value={citySlug}
             onChange={(e) => setCitySlug(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          Max. aantal kroegfoto&apos;s (leeg = geen limiet, naast het bestaande plafond in minuten)
+          <input
+            type="number"
+            min="1"
+            className={inputClass}
+            placeholder="bv. 4 voor een kort testspel"
+            value={maxBeerCount}
+            onChange={(e) => setMaxBeerCount(e.target.value)}
           />
         </label>
         <ErrorText>{error}</ErrorText>

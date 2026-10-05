@@ -6,6 +6,37 @@ React + TypeScript + Vite + Tailwind · Supabase (Postgres/PostGIS, Realtime, St
 
 Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spel). De app rekent alleen voor directe feedback.
 
+## Düsseldorf-testinstantie voor Erik (COP-74, los van productie)
+
+Voor de testspellen van 10 okt e.v. — een eigen, wegwerpbare Supabase+Vercel-combinatie, zodat
+testdata nooit in de weg zit van een latere productie-launch:
+
+1. **Supabase**: nieuw (gratis) project aanmaken, daarna gewoon stap "1. Supabase" hieronder
+   volgen (alle migraties plakken, anonieme sign-in aanzetten, beheerderscode zetten).
+2. **Vercel**: nieuw project, importeer dezelfde GitHub-repo (deze branch of `main` na mergen).
+   Voor de URL `boevenjachtdusseldorf.vercel.app`: Project Settings → Domains → voer
+   `boevenjachtdusseldorf` in als projectnaam (of een eigen domain als dat Vercel-project-alias
+   al bezet is) — Vercel geeft dan `<naam>.vercel.app` erbij. Zelfde env-variabelen als stap "2.
+   Vercel" hieronder, maar wijzend naar dít (test-)Supabase-project.
+3. **Testspel aanmaken**: open de site → onderaan "Nieuw spel aanmaken" → beheerderscode →
+   2 of 3 Polizei-teams → "4" bij "Max. aantal kroegfoto's" (zie `src/pages/NewGame.tsx`, deze
+   instelling is nieuw in deze issue) → stadspakket leeg laten (gebruikt dan het bestaande,
+   al geteste Düsseldorf-sjabloon met de door COP-62/64/66 gecorrigeerde Königsallee-lijn).
+4. **Feedback terugzien**: Supabase → SQL Editor → `select * from feedback order by created_at desc;`
+   (of de Table Editor). Spelers vullen het formulier in op het eindscherm na afloop.
+5. **112-knop**: tijdens het testspel eenmaal indrukken (niet echt bellen nodig om te verifiëren
+   dat-ie logt) en controleren met `select * from incidents order by created_at desc limit 1;`.
+6. **Foto-retentie**: stap "4. Foto-retentie" hieronder eenmalig instellen, anders blijven
+   testfoto's onbeperkt staan.
+7. **Engelstalige labels**: nog niet gebouwd — de app is nu volledig Nederlands/Duits-thematisch
+   (zie `AGENTS.md`/`PLAN.md`). Dit is een aparte, grotere klus (i18n van alle schermen); graag
+   eerst van Erik horen of de Düsseldorf-spelers Engels nodig hebben voordat dat gebouwd wordt.
+8. **Mobiel + wisselend bereik**: de offline-wachtrij voor foto's (`src/lib/uploadQueue.ts`,
+   IndexedDB) vangt verbindingsverlies al op — foto's blijven op het toestel staan en gaan
+   automatisch alsnog door zodra het bereik terug is. Dit is in deze issue niet opnieuw gebouwd,
+   maar is nog niet getest op een echt toestel; graag die stap (en de algemene PWA/crash-check)
+   door Erik zelf laten doen vóór 10 okt, zie "Spel spelen" hieronder voor de installatiestappen.
+
 ## Productie klaarzetten (eenmalig)
 
 ### 1. Supabase
@@ -29,6 +60,13 @@ Alle spelregels en de klok zitten in Postgres (RPC's met een row lock op het spe
    16. `20261001000001_utrecht_city.sql`
    17. `20261001000002_utrecht_points_of_interest.sql`
    18. `20261001000003_utrecht_forbidden_zones.sql`
+   19. `20261001000004_fix_copy_sights_from_city_search_path.sql`
+   20. `20261001000005_backfill_sight_coordinates.sql`
+   21. `20261001000006_fix_konigsallee_skew.sql`
+   22. `20261002000001_widen_konigsallee_area.sql`
+   23. `20261003000001_max_beer_count.sql` (optioneel plafond op het *aantal* kroegfoto's per spel)
+   24. `20261003000002_feedback.sql` (in-app feedbackformulier na afloop, tabel `feedback`)
+   25. `20261003000003_photo_retention.sql` (plant de 30-dagen-wipe, zie "Foto-retentie" hieronder — doet niets zonder stap 4 daarvan)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
@@ -80,6 +118,40 @@ Meldingen als de telefoon op zak zit: foto's, pings, radar en de vangst. Op de i
 5. **Vercel**: `VITE_VAPID_PUBLIC_KEY=<public key>` toevoegen en redeployen.
 
 Werkt het niet? Supabase → Edge Functions → push → Logs, en in SQL: `select status_code, content from net._http_response order by id desc limit 5;`.
+
+### 4. Foto-retentie: 30-dagen-wipe (optioneel maar aanbevolen, COP-74)
+
+Zonder deze stap blijven foto's (en de spellen zelf) onbeperkt staan — prima om te testen, maar
+niet iets om op productie te laten staan. Eenmalig instellen, zelfde patroon als pushmeldingen:
+
+1. Kies zelf een lang willekeurig geheim, bv. `node -e "console.log(crypto.randomUUID())"`.
+2. Edge Function uitrollen (`<ref>` = project-ref uit de Supabase-URL):
+
+   ```sh
+   npx supabase login
+   npx supabase link --project-ref <ref>
+   npx supabase secrets set CLEANUP_SECRET=<geheim>
+   npx supabase functions deploy cleanup --no-verify-jwt
+   ```
+
+3. **SQL Editor**:
+
+   ```sql
+   insert into private.app_secrets (key, value) values
+     ('cleanup_url', 'https://<ref>.supabase.co/functions/v1/cleanup'),
+     ('cleanup_secret', '<geheim>')
+   on conflict (key) do update set value = excluded.value;
+   ```
+
+Draait daarna elke nacht automatisch (pg_cron, zie `20261003000003_photo_retention.sql`): spellen
+ouder dan 30 dagen gaan inclusief hun foto's in Storage weg (zelfde als de handmatige stappen
+onder "Na het weekend: opruimen", maar dan vanzelf). Handmatig een keer draaien om te testen:
+`select net.http_post(url := 'https://<ref>.supabase.co/functions/v1/cleanup', headers := jsonb_build_object('x-cleanup-secret', '<geheim>'));`
+gevolgd door `select status_code, content from net._http_response order by id desc limit 1;`.
+Wil je zelf bepalen wanneer 'm uit laat draaien (bv. niet midden in een lopend testweekend)?
+`select cron.schedule('photo-retention-wipe', '17 3 * * *', 'select private.run_photo_retention();');`
+opnieuw aanroepen met een ander cron-patroon, of `select cron.unschedule('photo-retention-wipe');`
+om 'm helemaal te pauzeren.
 
 ### Noodmeldingen naar beheer (optioneel, COP-7)
 
