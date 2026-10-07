@@ -23,7 +23,7 @@ select c.id, v.kind, v.name_nl, v.description_nl,
   cross join (
     values
       ('bezienswaardigheid', 'Burgplatz & Schlossturm',      null,                                                                                             51.227278, 6.771180, 100, 1),
-      ('bezienswaardigheid', 'St. Lambertus Basilika',        null,                                                                                             51.2289,   6.7729,   100, 2),
+      ('bezienswaardigheid', 'St. Lambertus Basilika',        null,                                                                                             51.228146, 6.772064, 100, 2),
       ('bezienswaardigheid', 'Rathaus & Jan-Wellem-Denkmal',  null,                                                                                             51.225850, 6.772048, 75,  3),
       ('bezienswaardigheid', 'Rheinuferpromenade',            'Lijn langs de Rijn, noordeinde 51.2330,6.7728 - zuideinde 51.2165,6.7610; hier als middenpunt.', 51.22475,  6.76690,  40,  4),
       ('bezienswaardigheid', 'Königsallee',                   'Lijn over de gracht (rechtgetrokken, COP-64), noordeinde 51.2265,6.7790 - zuideinde 51.2174,6.7789; hier als middenpunt.', 51.22195,  6.77895,  50,  5),
