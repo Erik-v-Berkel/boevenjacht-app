@@ -10,6 +10,7 @@ export interface Teammate {
   name: string
   lat: number
   lng: number
+  color?: string // Polizei: kleur van het team van deze collega, zodat teams uit elkaar te houden zijn
 }
 
 export interface GameMapProps {
@@ -144,7 +145,7 @@ export function GameMap(props: GameMapProps) {
     }
   }, [props.me?.lat, props.me?.lng, props.me?.accuracy])
 
-  // Teamgenoten (alleen boeven onderling)
+  // Teamgenoten: boeven onderling, of Polizei-teams onderling (elk in hun eigen teamkleur)
   useEffect(() => {
     const g = layers.current!.pings
     g.clearLayers()
@@ -168,7 +169,7 @@ export function GameMap(props: GameMapProps) {
     const g = layers.current!.team
     g.clearLayers()
     for (const t of props.teammates ?? []) {
-      L.circleMarker([t.lat, t.lng], { radius: 7, color: 'white', weight: 2, fillColor: '#dc2626', fillOpacity: 1 })
+      L.circleMarker([t.lat, t.lng], { radius: 7, color: 'white', weight: 2, fillColor: t.color ?? '#dc2626', fillOpacity: 1 })
         .bindTooltip(escapeHtml(t.name), { permanent: true, direction: 'top', offset: [0, -8] })
         .addTo(g)
     }
