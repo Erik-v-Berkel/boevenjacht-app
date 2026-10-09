@@ -19,12 +19,11 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_player_id   uuid;
-  v_team_id     uuid;
-  v_role        text;
-  v_settings    jsonb;
-  v_outside     boolean;
-  v_was_outside timestamptz;
+  v_player_id uuid;
+  v_team_id   uuid;
+  v_role      text;
+  v_settings  jsonb;
+  v_outside   boolean;
 begin
   select p.id, p.team_id, t.role, g.settings into v_player_id, v_team_id, v_role, v_settings
     from public.players p
@@ -52,15 +51,21 @@ begin
 
   -- Buiten-het-gebied-melding: alleen op een onbetrouwbare fix (zie p_accuracy_m) overslaan,
   -- anders krijgt iedereen onterecht een melding door een slechte GPS-sprong.
+  -- Geen "select ... for update": dat botst met de FOR KEY SHARE-lock die elke insert in
+  -- player_locations/location_history al op deze teams-rij legt (foreign key naar teams.id)
+  -- en gaf onder load een deadlock (zie capaciteitstest). Een gewone update (FOR NO KEY UPDATE)
+  -- botst daar niet mee; de kleine race (twee gelijktijdige vertrekken geven 2 events in plaats
+  -- van 1) is onschuldig voor een melding.
   if v_role in ('thieves', 'police') and v_settings ? 'play_area' and p_accuracy_m <= 100 then
     v_outside := not extensions.st_covers(private.geog(v_settings -> 'play_area'), private.point(p_lat, p_lng));
-    select outside_area_since into v_was_outside from public.teams where id = v_team_id for update;
-    if v_outside and v_was_outside is null then
-      update public.teams set outside_area_since = now() where id = v_team_id;
-      insert into public.events (game_id, type, payload)
-      values (p_game_id, 'out_of_bounds', jsonb_build_object('team_id', v_team_id));
-    elsif not v_outside and v_was_outside is not null then
-      update public.teams set outside_area_since = null where id = v_team_id;
+    if v_outside then
+      update public.teams set outside_area_since = now() where id = v_team_id and outside_area_since is null;
+      if found then
+        insert into public.events (game_id, type, payload)
+        values (p_game_id, 'out_of_bounds', jsonb_build_object('team_id', v_team_id));
+      end if;
+    else
+      update public.teams set outside_area_since = null where id = v_team_id and outside_area_since is not null;
     end if;
   end if;
 end;
