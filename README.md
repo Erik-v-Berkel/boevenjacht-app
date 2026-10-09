@@ -67,6 +67,7 @@ testdata nooit in de weg zit van een latere productie-launch:
    23. `20261003000001_max_beer_count.sql` (optioneel plafond op het *aantal* kroegfoto's per spel)
    24. `20261003000002_feedback.sql` (in-app feedbackformulier na afloop, tabel `feedback`)
    25. `20261003000003_photo_retention.sql` (plant de 30-dagen-wipe, zie "Foto-retentie" hieronder — doet niets zonder stap 4 daarvan)
+   26. `20261009000001_police_see_each_other.sql` (COP-83: Polizei-teams zien elkaar live op de kaart)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 

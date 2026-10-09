@@ -56,6 +56,7 @@ Algemeen:
 - Alle boeven zien: "Jullie zijn gevangen door Politie B om 21:14."
 - Alleen de eerste vangstfoto die de server bereikt, telt. Latere pogingen krijgen de melding "Te laat, Politie A was je voor."
 - **"Samen blijven" controleren (optioneel, fase 7):** de boeven zien elkaar op hun eigen kaart. Staan ze meer dan 100 m uit elkaar, dan krijgen ze de melding "Blijf bij elkaar!". De politie ziet deze live locaties **niet**.
+- **Polizei-teams onderling (COP-83):** bij 2 of meer Polizei-teams zien die elkaars live locatie op de kaart (elk team in zijn eigen teamkleur), zodat ze de zoektocht kunnen afstemmen. Dit geldt niet voor de boeven: die blijven voor de politie onzichtbaar, alleen fotopins.
 
 ### 2.4 Spelgebied
 - Het hele gebied van de weekendkaart: Altstadt, Carlstadt, Königsallee, Hofgarten, Rheinuferpromenade, Rheinturm en MedienHafen. Alle 10 bezienswaardigheden liggen daarbinnen.
