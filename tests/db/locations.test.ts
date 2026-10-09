@@ -83,4 +83,10 @@ describe('buiten het speelveld (COP-84)', () => {
     await rpc(players[1].phone, 'update_location', loc(game_id, AT.hbf)) // weer buiten: 2e melding
     expect((await eventTypes(game_id)).filter((t) => t === 'out_of_bounds')).toHaveLength(2)
   })
+
+  it('meldt ook bij een onnauwkeurige fix: de kaart (player_locations) kent ook geen accuracy-grens', async () => {
+    const { game_id, players } = await startedGame()
+    await rpc(players[1].phone, 'update_location', { p_game_id: game_id, p_lat: AT.hbf[0], p_lng: AT.hbf[1], p_accuracy_m: 300 })
+    expect(await eventTypes(game_id)).toEqual(['game_started', 'out_of_bounds'])
+  })
 })
