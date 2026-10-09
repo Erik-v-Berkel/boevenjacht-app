@@ -150,6 +150,8 @@ function soundFor(e: GameEvent): SoundName | null {
       return 'alarm'
     case 'incident':
       return 'alarm'
+    case 'out_of_bounds':
+      return 'chime'
     case 'game_ended':
       return e.payload.winner === 'thieves' ? 'fanfare' : null
     default:

@@ -39,6 +39,8 @@ export function eventText(e: EventLike, players: Named[], teams: Named[]): { ico
       return { icon: '📍', text: `${team} heeft een controlepost bij ${e.payload.label}: +1 radar!` }
     case 'incident':
       return { icon: '🆘', text: `Noodmelding${who ? ` van ${who}` : ''}! Bel 112 als je kunt helpen of zelf in gevaar bent.` }
+    case 'out_of_bounds':
+      return { icon: '🧭', text: `${team} is buiten het speelveld geraakt!` }
     case 'admin_action':
       if (e.payload.action === 'end_time_changed') return { icon: '🛠️', text: 'De eindtijd is aangepast door de organisatie.' }
       if (e.payload.action === 'photo_rejected') {

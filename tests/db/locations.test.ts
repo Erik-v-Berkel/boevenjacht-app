@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { admin, AT, newPhone, rpc, startedGame } from './helpers'
+import { admin, AT, eventTypes, newPhone, rpc, startedGame } from './helpers'
 
 const loc = (gameId: string, at: readonly [number, number]) => ({ p_game_id: gameId, p_lat: at[0], p_lng: at[1], p_accuracy_m: 10 })
 
@@ -61,5 +61,26 @@ describe('live locaties Polizei (COP-83)', () => {
     // De boef ziet alleen zichzelf, geen Polizei
     const { data: zietBoef } = await players[0].phone.from('player_locations').select('lat').eq('game_id', game_id)
     expect(zietBoef).toHaveLength(1)
+  })
+})
+
+describe('buiten het speelveld (COP-84)', () => {
+  it('boeven: iedereen krijgt 1 melding bij vertrek, geen herhaling zolang ze buiten blijven', async () => {
+    const { game_id, players, teams } = await startedGame()
+    await rpc(players[0].phone, 'update_location', loc(game_id, AT.burgplatz)) // binnen: geen melding
+    await rpc(players[0].phone, 'update_location', loc(game_id, AT.hbf)) // buiten: 1 melding
+    await rpc(players[0].phone, 'update_location', loc(game_id, AT.hbf)) // nog steeds buiten: geen 2e
+    expect(await eventTypes(game_id)).toEqual(['game_started', 'out_of_bounds'])
+
+    const { data } = await admin.from('events').select('payload').eq('game_id', game_id).eq('type', 'out_of_bounds').single()
+    expect(data!.payload).toEqual({ team_id: teams[0].id }) // geen lat/lng: de locatie van de boeven blijft geheim
+  })
+
+  it('geldt ook voor een Polizei-team, en opnieuw zodra ze weer vertrekken', async () => {
+    const { game_id, players } = await startedGame()
+    await rpc(players[1].phone, 'update_location', loc(game_id, AT.hbf)) // Politie A buiten
+    await rpc(players[1].phone, 'update_location', loc(game_id, AT.burgplatz)) // terug binnen: reset, geen melding
+    await rpc(players[1].phone, 'update_location', loc(game_id, AT.hbf)) // weer buiten: 2e melding
+    expect((await eventTypes(game_id)).filter((t) => t === 'out_of_bounds')).toHaveLength(2)
   })
 })
