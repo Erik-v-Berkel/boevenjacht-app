@@ -118,6 +118,7 @@ export type EventType =
   | 'checkpoint'
   | 'incident'
   | 'admin_action'
+  | 'out_of_bounds'
 
 export type PingKind = 'idle' | 'final' | 'radar'
 
