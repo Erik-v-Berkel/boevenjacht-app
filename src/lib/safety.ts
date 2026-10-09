@@ -4,6 +4,13 @@
 // (supabase/migrations/20260930000005_safety.sql).
 export const CONSENT_VERSION = 'v1'
 
+/** Noodknop is tijdelijk verborgen op besluit van Erik; vanaf deze datum weer automatisch zichtbaar. */
+export const EMERGENCY_BUTTON_HIDDEN_UNTIL = '2026-10-16T00:00:00Z'
+
+export function isEmergencyButtonHidden(now: number): boolean {
+  return now < Date.parse(EMERGENCY_BUTTON_HIDDEN_UNTIL)
+}
+
 export const SAFETY_EXPLAINER = [
   'Jij bent verantwoordelijk voor je eigen veiligheid en gedrag.',
   'Volg altijd verkeersregels en aanwijzingen van politie, handhaving en terreineigenaren.',
