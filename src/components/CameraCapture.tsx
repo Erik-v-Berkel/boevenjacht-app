@@ -4,14 +4,18 @@ import { ErrorText } from './ui'
 
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
 
+type Facing = 'environment' | 'user'
+
 /**
- * Live camera (achtercamera). Foto's komen uit het videobeeld, niet uit de fotorol.
- * Lukt getUserMedia niet, dan de terugvaloptie <input capture="environment">.
+ * Live camera, standaard de achtercamera maar met een knop om te wisselen naar een selfie.
+ * Foto's komen uit het videobeeld, niet uit de fotorol.
+ * Lukt getUserMedia niet, dan de terugvaloptie <input capture>.
  */
 export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob) => void; onCancel: () => void }) {
   const video = useRef<HTMLVideoElement>(null)
   const [state, setState] = useState<'starting' | 'live' | 'denied' | 'fallback'>('starting')
   const [busy, setBusy] = useState(false)
+  const [facing, setFacing] = useState<Facing>('environment')
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -20,8 +24,9 @@ export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob)
       setState('fallback')
       return
     }
+    setState('starting')
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false })
+      .getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false })
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
         stream = s
@@ -36,7 +41,7 @@ export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob)
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [])
+  }, [facing])
 
   const shoot = async () => {
     if (!video.current) return
@@ -59,6 +64,8 @@ export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob)
     }
   }
 
+  const flip = () => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))
+
   return (
     <div className="flex flex-col gap-3">
       {state === 'denied' && (
@@ -72,8 +79,20 @@ export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob)
 
       {(state === 'starting' || state === 'live') && (
         <div className="relative overflow-hidden rounded-2xl bg-black">
-          <video ref={video} playsInline muted className="aspect-[3/4] w-full object-cover" />
+          <video
+            ref={video}
+            playsInline
+            muted
+            className={`aspect-[3/4] w-full object-cover ${facing === 'user' ? 'scale-x-[-1]' : ''}`}
+          />
           {state === 'starting' && <p className="absolute inset-0 grid place-items-center text-slate-400">Camera starten…</p>}
+          <button
+            onClick={flip}
+            aria-label="Wissel tussen selfie en achtercamera"
+            className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-xl text-white"
+          >
+            🔄
+          </button>
         </div>
       )}
 
@@ -87,16 +106,21 @@ export function CameraCapture({ onCapture, onCancel }: { onCapture: (blob: Blob)
       )}
 
       {state === 'fallback' && (
-        <label className="rounded-xl bg-yellow-400 px-4 py-3 text-center text-lg font-semibold text-slate-900">
-          📷 Foto maken
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => void fromFile(e.target.files?.[0])}
-          />
-        </label>
+        <div className="flex flex-col gap-2">
+          <label className="rounded-xl bg-yellow-400 px-4 py-3 text-center text-lg font-semibold text-slate-900">
+            📷 Foto maken
+            <input
+              type="file"
+              accept="image/*"
+              capture={facing}
+              className="hidden"
+              onChange={(e) => void fromFile(e.target.files?.[0])}
+            />
+          </label>
+          <button className="text-slate-400 underline" onClick={flip}>
+            {facing === 'environment' ? '🤳 Wissel naar selfie' : '📷 Wissel naar achtercamera'}
+          </button>
+        </div>
       )}
 
       <button className="text-slate-400 underline" onClick={onCancel}>
