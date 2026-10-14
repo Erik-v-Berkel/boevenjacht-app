@@ -68,6 +68,10 @@ testdata nooit in de weg zit van een latere productie-launch:
    24. `20261003000002_feedback.sql` (in-app feedbackformulier na afloop, tabel `feedback`)
    25. `20261003000003_photo_retention.sql` (plant de 30-dagen-wipe, zie "Foto-retentie" hieronder — doet niets zonder stap 4 daarvan)
    26. `20261009000001_police_see_each_other.sql` (COP-83: Polizei-teams zien elkaar live op de kaart)
+   27. `20261009000002_out_of_bounds_alert.sql` (COP-84: melding voor iedereen als een team buiten het speelveld raakt)
+   28. `20261009000003_out_of_bounds_accuracy_fix.sql` (COP-84: buiten-gebied-melding negeerde fixes met accuracy > 100 m)
+   29. `20261014000001_split_city.sql` (COP-92: stadspakket Split — rode lijn, `status = 'draft'`)
+   30. `20261014000002_split_points_of_interest.sql` (COP-92: Split — 7 bezienswaardigheden)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
