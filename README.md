@@ -72,6 +72,7 @@ testdata nooit in de weg zit van een latere productie-launch:
    28. `20261009000003_out_of_bounds_accuracy_fix.sql` (COP-84: buiten-gebied-melding negeerde fixes met accuracy > 100 m)
    29. `20261014000001_split_city.sql` (COP-92: stadspakket Split — rode lijn, `status = 'draft'`)
    30. `20261014000002_split_points_of_interest.sql` (COP-92: Split — 7 bezienswaardigheden)
+   31. `20261014000003_split_smaller_radius.sql` (COP-92: Split — kleinere foto-geofences op Eriks verzoek)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 
