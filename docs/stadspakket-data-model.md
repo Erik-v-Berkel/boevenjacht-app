@@ -103,3 +103,10 @@ is een boeking een aanvraag die Erik/support handmatig bevestigt.
   geen (apart, via sales, zie `utrecht.md`).
 - Vertaalworkflow NL/EN: nu losse kolommen per taal; prima voor 2 talen, zou bij een 3e taal
   een aparte `city_translations`-tabel worden.
+- **Split-stadspakket (COP-92):** rode lijn en 7 bezienswaardigheden staan nu op `status = 'draft'`
+  (dus nog niet zichtbaar/boekbaar). Coördinaten komen rechtstreeks van Erik (issue), maar de kale
+  4-hoekpunten lieten 2 van de 7 bezienswaardigheden net buiten het speelgebied vallen — de rode
+  lijn is daarom door de agent verruimd (zie migratie-commentaar in
+  `20261014000001_split_city.sql`). Open voor Erik: deze verruiming ter plekke/op de kaart
+  bevestigen (met name het stuk langs de Riva/haven en Matejuška, beide grenzend aan water —
+  veiligheid.md), thema-naam ('Romeinse Stad' is een plaatsvervanger) en wanneer naar `active`.
