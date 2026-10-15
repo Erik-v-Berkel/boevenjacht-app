@@ -219,6 +219,35 @@ describe('Polizei-teams in de lobby', () => {
   })
 })
 
+describe('radarinstellingen in de lobby', () => {
+  it('past radars_per_team en checkpoint_radars_max aan, alleen in de lobby', async () => {
+    const { game_id, join_code } = await createGame()
+    const p = await joinedPhone(join_code, 'Anna')
+
+    await rpc(p.phone, 'set_radar_settings', { p_game_id: game_id, p_radars_per_team: 3, p_checkpoint_radars_max: 5 })
+    const g = await gameRow(game_id)
+    expect(g.settings.radars_per_team).toBe(3)
+    expect(g.settings.checkpoint_radars_max).toBe(5)
+
+    await expect(
+      rpc(p.phone, 'set_radar_settings', { p_game_id: game_id, p_radars_per_team: -1, p_checkpoint_radars_max: 2 }),
+    ).rejects.toThrow('0 tot 5 radars')
+    await expect(
+      rpc(p.phone, 'set_radar_settings', { p_game_id: game_id, p_radars_per_team: 1, p_checkpoint_radars_max: 11 }),
+    ).rejects.toThrow('0 tot 10 extra radars')
+    await expect(
+      rpc(await newPhone(), 'set_radar_settings', { p_game_id: game_id, p_radars_per_team: 1, p_checkpoint_radars_max: 2 }),
+    ).rejects.toThrow('niet mee')
+  })
+
+  it('niet meer na de start', async () => {
+    const { game_id, players } = await startedGame()
+    await expect(
+      rpc(players[0].phone, 'set_radar_settings', { p_game_id: game_id, p_radars_per_team: 2, p_checkpoint_radars_max: 2 }),
+    ).rejects.toThrow('al begonnen')
+  })
+})
+
 describe('controlepost', () => {
   const checkpoint = async (phone: Awaited<ReturnType<typeof newPhone>>, gameId: string, at: readonly [number, number], accuracy = 10) =>
     rpc<{ status: string; reject_reason?: string; label?: string }>(phone, 'submit_checkpoint', {

@@ -20,6 +20,7 @@ export interface GameSettings {
   final_ping_min?: number
   ping_radius_m?: number
   radars_per_team?: number
+  checkpoint_radars_max?: number
   police_teams?: number
   // COP-74: optioneel, alleen gezet als een spel een hard plafond op het *aantal* kroegfoto's wil
   // (los van max_bonus_total_min). Onbekend/afwezig = geen plafond.
