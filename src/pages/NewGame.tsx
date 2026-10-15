@@ -23,6 +23,8 @@ export default function NewGame() {
   const [policeTeams, setPoliceTeams] = useState(3)
   const [citySlug, setCitySlug] = useState('')
   const [maxBeerCount, setMaxBeerCount] = useState('')
+  const [radarsPerTeam, setRadarsPerTeam] = useState(1)
+  const [checkpointRadarsMax, setCheckpointRadarsMax] = useState(2)
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
@@ -33,6 +35,8 @@ export default function NewGame() {
       p_admin_code: adminCode,
       p_settings: {
         police_teams: policeTeams,
+        radars_per_team: radarsPerTeam,
+        checkpoint_radars_max: checkpointRadarsMax,
         ...(testMode ? { time_scale: 12 } : {}),
         ...(Number.isFinite(maxBeer) && maxBeer > 0 ? { max_beer_count: maxBeer } : {}),
       },
@@ -116,6 +120,28 @@ export default function NewGame() {
             placeholder="bv. dusseldorf of utrecht"
             value={citySlug}
             onChange={(e) => setCitySlug(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          Radars waarmee elk Polizei-team start
+          <input
+            type="number"
+            min="0"
+            max="5"
+            className={inputClass}
+            value={radarsPerTeam}
+            onChange={(e) => setRadarsPerTeam(Number(e.target.value) || 0)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-slate-400">
+          Max. extra radars per team via controleposten
+          <input
+            type="number"
+            min="0"
+            max="10"
+            className={inputClass}
+            value={checkpointRadarsMax}
+            onChange={(e) => setCheckpointRadarsMax(Number(e.target.value) || 0)}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-slate-400">

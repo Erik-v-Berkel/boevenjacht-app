@@ -10,8 +10,6 @@ import { DevGps } from '../components/DevGps'
 import { UploadStatus } from '../components/UploadStatus'
 import { Button } from '../components/ui'
 
-const CHECKPOINTS_MAX = 2 // zelfde als checkpoint_radars_max op de server
-
 type Kind = 'capture' | 'checkpoint'
 type Step =
   | { name: 'start' }
@@ -30,7 +28,8 @@ export default function PoliceCamera({ data, now, geo, team }: { data: GameData;
   const usedSights = useMemo(() => new Set(mine.flatMap((p) => (p.sight_id ? [p.sight_id] : []))), [mine])
   const pos = geo.kind === 'ok' ? geo.pos : null
   const sightCheck = pos ? checkSight(data.sights, usedSights, pos) : null
-  const checkpointsLeft = CHECKPOINTS_MAX - mine.length
+  const checkpointsMax = data.game.settings.checkpoint_radars_max ?? 2
+  const checkpointsLeft = checkpointsMax - mine.length
 
   // Tweede tik moet binnen 4 seconden komen
   useEffect(() => {
@@ -97,7 +96,7 @@ export default function PoliceCamera({ data, now, geo, team }: { data: GameData;
 
   const checkpointProblem =
     checkpointsLeft <= 0
-      ? `Jullie hebben al ${CHECKPOINTS_MAX} controleposten gehad`
+      ? `Jullie hebben al ${checkpointsMax} controleposten gehad`
       : !pos
         ? 'Locatie zoeken…'
         : sightCheck?.kind === 'used'

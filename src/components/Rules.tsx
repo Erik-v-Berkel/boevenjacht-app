@@ -45,6 +45,7 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
   const finalPing = s.final_ping_min ?? 10
   const radius = s.ping_radius_m ?? 300
   const radars = s.radars_per_team ?? 1
+  const checkpointMax = s.checkpoint_radars_max ?? 2
   return (
     <article className="flex flex-col gap-4 text-slate-200 [&_h2]:text-lg [&_h2]:font-bold [&_li]:ml-5 [&_li]:list-disc">
       <h1 className="text-2xl font-black">Spielregeln</h1>
@@ -94,7 +95,7 @@ export function Rules({ settings: s }: { settings: GameSettings }) {
           <li>De eerste vangstfoto telt. Dat Polizei-team wint.</li>
           <li>
             📍 Controlepost: maak als Polizei-team een foto bij een bezienswaardigheid en krijg een extra radar. Elke bezienswaardigheid 1×
-            per team, maximaal 2. Let op: de boeven zien waar jullie waren!
+            per team, maximaal {checkpointMax}. Let op: de boeven zien waar jullie waren!
           </li>
           <li>
             Elk Polizei-team heeft {radars}× een radar (op de kaart). Alleen jullie team ziet dan een cirkel rond de boeven. De andere

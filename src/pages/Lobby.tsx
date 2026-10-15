@@ -38,6 +38,20 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
     if (error) setError(errorMessage(error))
   }
 
+  const radarsPerTeam = game.settings.radars_per_team ?? 1
+  const checkpointRadarsMax = game.settings.checkpoint_radars_max ?? 2
+  const setRadarSettings = async (next: { radarsPerTeam?: number; checkpointRadarsMax?: number }) => {
+    setBusy(true)
+    setError('')
+    const { error } = await supabase.rpc('set_radar_settings', {
+      p_game_id: game.id,
+      p_radars_per_team: next.radarsPerTeam ?? radarsPerTeam,
+      p_checkpoint_radars_max: next.checkpointRadarsMax ?? checkpointRadarsMax,
+    })
+    setBusy(false)
+    if (error) setError(errorMessage(error))
+  }
+
   const start = async () => {
     setBusy(true)
     setError('')
@@ -149,6 +163,52 @@ export default function Lobby({ data, me }: { data: GameData; me: Player }) {
             className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
             disabled={busy || policeCount >= 5}
             onClick={() => setPoliceTeams(policeCount + 1)}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-4 py-3 ring-1 ring-slate-700">
+        <span className="text-slate-300">📡 Start-radars per Polizei-team</span>
+        <div className="flex items-center gap-3">
+          <button
+            aria-label="Minder start-radars"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || radarsPerTeam <= 0}
+            onClick={() => setRadarSettings({ radarsPerTeam: radarsPerTeam - 1 })}
+          >
+            −
+          </button>
+          <span className="w-4 text-center text-xl font-bold tabular-nums">{radarsPerTeam}</span>
+          <button
+            aria-label="Meer start-radars"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || radarsPerTeam >= 5}
+            onClick={() => setRadarSettings({ radarsPerTeam: radarsPerTeam + 1 })}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-4 py-3 ring-1 ring-slate-700">
+        <span className="text-slate-300">📍 Extra radars via controleposten (max.)</span>
+        <div className="flex items-center gap-3">
+          <button
+            aria-label="Minder controlepost-radars"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || checkpointRadarsMax <= 0}
+            onClick={() => setRadarSettings({ checkpointRadarsMax: checkpointRadarsMax - 1 })}
+          >
+            −
+          </button>
+          <span className="w-4 text-center text-xl font-bold tabular-nums">{checkpointRadarsMax}</span>
+          <button
+            aria-label="Meer controlepost-radars"
+            className="h-10 w-10 rounded-full bg-slate-700 text-xl font-bold disabled:opacity-30"
+            disabled={busy || checkpointRadarsMax >= 10}
+            onClick={() => setRadarSettings({ checkpointRadarsMax: checkpointRadarsMax + 1 })}
           >
             +
           </button>

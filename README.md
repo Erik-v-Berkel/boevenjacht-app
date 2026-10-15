@@ -75,6 +75,7 @@ testdata nooit in de weg zit van een latere productie-launch:
    31. `20261014000003_split_smaller_radius.sql` (COP-92: Split — kleinere foto-geofences op Eriks verzoek)
    32. `20261015000001_split_extend_to_church.sql` (COP-95: Split — rode lijn naar boven uitgebreid tot aan klooster Gospa od Zdravlja, als 8e bezienswaardigheid toegevoegd)
    33. `20261015000002_split_hostel_dvor.sql` (COP-95: Split — Hostel Dvor als 9e bezienswaardigheid, rode lijn opnieuw iets verruimd)
+   34. `20261015000003_radar_settings.sql` (COP-96: aantal start-radars en controlepost-radars instelbaar bij het aanmaken en in de lobby)
 2. **Authentication → Sign In / Providers**: zet **Allow anonymous sign-ins** aan.
 3. **Beheerderscode** voor "Nieuw spel" (kies zelf een code):
 

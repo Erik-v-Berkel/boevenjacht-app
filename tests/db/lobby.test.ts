@@ -34,6 +34,21 @@ describe('create_game', () => {
     ])
   })
 
+  it('heeft standaard radarinstellingen, die bij het aanmaken aan te passen zijn', async () => {
+    const standaard = await createGame()
+    const { data: g1 } = await admin.from('games').select('settings').eq('id', standaard.game_id).single()
+    expect(g1!.settings).toMatchObject({ radars_per_team: 1, checkpoint_radars_max: 2 })
+
+    const aangepast = await createGame({ radars_per_team: 0, checkpoint_radars_max: 4 })
+    const { data: g2 } = await admin.from('games').select('settings').eq('id', aangepast.game_id).single()
+    expect(g2!.settings).toMatchObject({ radars_per_team: 0, checkpoint_radars_max: 4 })
+
+    await expect(createGame({ radars_per_team: -1 })).rejects.toThrow('0 tot 5 start-radars')
+    await expect(createGame({ radars_per_team: 6 })).rejects.toThrow('0 tot 5 start-radars')
+    await expect(createGame({ checkpoint_radars_max: -1 })).rejects.toThrow('0 tot 10 extra radars')
+    await expect(createGame({ checkpoint_radars_max: 11 })).rejects.toThrow('0 tot 10 extra radars')
+  })
+
   it('neemt alleen bekende instellingen over', async () => {
     const { game_id } = await createGame({ time_scale: 12, onzin: 1 })
     const { data: game } = await admin.from('games').select('settings').eq('id', game_id).single()
